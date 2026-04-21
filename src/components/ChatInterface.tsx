@@ -10,11 +10,13 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 interface Props {
   mode: ModeId;
+  messages: Msg[];
+  onMessagesChange: (updater: (prev: Msg[]) => Msg[]) => void;
 }
 
-export const ChatInterface = ({ mode }: Props) => {
+export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
   const meta = getMode(mode);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const setMessages = onMessagesChange;
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -28,7 +30,7 @@ export const ChatInterface = ({ mode }: Props) => {
     if (!text || loading) return;
     setInput("");
     const next: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
+    setMessages(() => next);
     setLoading(true);
 
     let assistantSoFar = "";
@@ -63,7 +65,7 @@ export const ChatInterface = ({ mode }: Props) => {
         } else {
           toast.error("Ares failed to respond.");
         }
-        setMessages(next); // rollback assistant placeholder
+        setMessages(() => next); // rollback assistant placeholder
         setLoading(false);
         return;
       }
@@ -189,7 +191,7 @@ export const ChatInterface = ({ mode }: Props) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setMessages([])}
+                  onClick={() => setMessages(() => [])}
                   className="h-8 w-8"
                   aria-label="Clear chat"
                 >
