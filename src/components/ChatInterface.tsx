@@ -10,11 +10,13 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 interface Props {
   mode: ModeId;
+  messages: Msg[];
+  onMessagesChange: (updater: (prev: Msg[]) => Msg[]) => void;
 }
 
-export const ChatInterface = ({ mode }: Props) => {
+export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
   const meta = getMode(mode);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const setMessages = onMessagesChange;
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
