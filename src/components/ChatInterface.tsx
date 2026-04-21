@@ -30,7 +30,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
     if (!text || loading) return;
     setInput("");
     const next: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
+    setMessages(() => next);
     setLoading(true);
 
     let assistantSoFar = "";
@@ -65,7 +65,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
         } else {
           toast.error("Ares failed to respond.");
         }
-        setMessages(next); // rollback assistant placeholder
+        setMessages(() => next); // rollback assistant placeholder
         setLoading(false);
         return;
       }
