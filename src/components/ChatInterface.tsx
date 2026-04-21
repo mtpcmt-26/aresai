@@ -191,7 +191,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setMessages([])}
+                  onClick={() => setMessages(() => [])}
                   className="h-8 w-8"
                   aria-label="Clear chat"
                 >
