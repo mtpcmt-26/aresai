@@ -85,7 +85,18 @@ Deno.serve(async (req) => {
     }
 
     const modeKey = typeof mode === "string" && MODE_PROMPTS[mode] ? mode : "normal";
-    const systemPrompt = MODE_PROMPTS[modeKey];
+    const today = new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+    const systemPrompt = `${MODE_PROMPTS[modeKey]}
+
+CURRENT DATE: ${today} (UTC).
+- Use this as "today" for any time-sensitive answers.
+- Your training data has a cutoff and may be stale. If the user asks about recent events, current prices, live scores, news, software versions, or anything that changes over time, say plainly that you don't have live web access and your knowledge may be outdated. Do not invent recent facts.`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
