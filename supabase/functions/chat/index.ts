@@ -98,17 +98,17 @@ CURRENT DATE: ${today} (UTC).
 - Use this as "today" for any time-sensitive answers.
 - Your training data has a cutoff and may be stale. If the user asks about recent events, current prices, live scores, news, software versions, or anything that changes over time, say plainly that you don't have live web access and your knowledge may be outdated. Do not invent recent facts.`;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "openai/gpt-oss-120b",
         stream: true,
         messages: [
           { role: "system", content: systemPrompt },
