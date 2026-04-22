@@ -1,4 +1,6 @@
-// Ares chat edge function — streams from Lovable AI Gateway with mode-specific system prompts
+// Ares chat edge function — streams from Groq with mode-specific system prompts.
+// For time-sensitive questions, performs a Firecrawl web search first and injects
+// the results so Ares can answer with current information instead of refusing.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -106,6 +108,76 @@ MODE: SHORT
 - Direct and concise only.`,
 };
 
+// Heuristic: should we run a live web search before answering?
+// Triggers on time-sensitive keywords or "current/latest/now/today" style questions.
+const TIME_SENSITIVE_PATTERNS = [
+  /\b(current|currently|latest|recent|recently|today|tonight|this (week|month|year)|right now|as of|present|now)\b/i,
+  /\b(who is|who's)\s+(the\s+)?(current\s+)?(president|prime minister|ceo|leader|champion|king|queen|chancellor|pope|emperor)/i,
+  /\b(price|stock|score|weather|news|headline|update|version|release)\b/i,
+  /\b(202[4-9]|20[3-9]\d)\b/,
+  /\bwhen (did|does|will)\b/i,
+  /\bhow (much|many)\b.*\b(cost|price|worth)\b/i,
+];
+
+function isTimeSensitive(text: string): boolean {
+  if (!text) return false;
+  return TIME_SENSITIVE_PATTERNS.some((re) => re.test(text));
+}
+
+interface FirecrawlSearchResult {
+  url?: string;
+  title?: string;
+  description?: string;
+  markdown?: string;
+}
+
+async function firecrawlSearch(query: string, apiKey: string): Promise<FirecrawlSearchResult[]> {
+  try {
+    const res = await fetch("https://api.firecrawl.dev/v2/search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        limit: 5,
+      }),
+    });
+    if (!res.ok) {
+      console.error("Firecrawl search failed:", res.status, await res.text());
+      return [];
+    }
+    const data = await res.json();
+    // v2 search response: { success, data: { web: [{ url, title, description }, ...] } }
+    // older shape: { success, data: [...] }
+    const web = data?.data?.web ?? data?.data ?? [];
+    if (!Array.isArray(web)) return [];
+    return web.slice(0, 5).map((r: Record<string, unknown>) => ({
+      url: typeof r.url === "string" ? r.url : undefined,
+      title: typeof r.title === "string" ? r.title : undefined,
+      description: typeof r.description === "string" ? r.description : undefined,
+    }));
+  } catch (e) {
+    console.error("Firecrawl search error:", e);
+    return [];
+  }
+}
+
+function formatSearchContext(query: string, results: FirecrawlSearchResult[]): string {
+  if (results.length === 0) return "";
+  const lines = results.map((r, i) => {
+    const title = r.title ?? "(no title)";
+    const url = r.url ?? "";
+    const desc = (r.description ?? "").replace(/\s+/g, " ").trim().slice(0, 400);
+    return `[${i + 1}] ${title}\n    ${url}\n    ${desc}`;
+  });
+  return `LIVE WEB SEARCH RESULTS (query: "${query}")
+The following results were just retrieved from the live web. Cross-reference them, prefer the most consistent and recent information, and answer confidently. If multiple reputable sources agree, state the answer plainly. Cite sources inline like [1], [2] when useful.
+
+${lines.join("\n\n")}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -127,11 +199,30 @@ Deno.serve(async (req) => {
       day: "numeric",
       timeZone: "UTC",
     });
+
+    // Look at the latest user message — if it looks time-sensitive, run a web search.
+    const lastUser = [...messages].reverse().find((m: { role: string; content: string }) => m.role === "user");
+    const userText: string = typeof lastUser?.content === "string" ? lastUser.content : "";
+
+    const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+    let searchContext = "";
+    if (FIRECRAWL_API_KEY && userText && isTimeSensitive(userText)) {
+      console.log("Time-sensitive question detected. Running Firecrawl search…");
+      const results = await firecrawlSearch(userText, FIRECRAWL_API_KEY);
+      searchContext = formatSearchContext(userText, results);
+      console.log(`Firecrawl returned ${results.length} results.`);
+    }
+
     const systemPrompt = `${MODE_PROMPTS[modeKey]}
 
 CURRENT DATE: ${today} (UTC).
-- Use this as "today" for any time-sensitive answers.
-- Your training data has a cutoff and may be stale. If the user asks about recent events, current prices, live scores, news, software versions, or anything that changes over time, say plainly that you don't have live web access and your knowledge may be outdated. Do not invent recent facts.`;
+
+LIVE INFORMATION POLICY:
+- You have access to a live web search that runs automatically for time-sensitive questions.
+- When LIVE WEB SEARCH RESULTS are provided below, treat them as the most up-to-date source of truth and answer the user's question directly and confidently. Do NOT say "I can't tell you that" or "my information may be outdated" when fresh search results are present.
+- Triple-check the answer against the provided results: only commit to a fact if multiple sources agree, or if a single high-credibility source states it clearly. If sources conflict, state the most likely answer and briefly note the disagreement.
+- If NO live search results were provided and the question is genuinely time-sensitive, say plainly that you don't have live data for this and give your best knowledge with the caveat that it may be outdated. Do not refuse to answer.
+- Never fabricate URLs, statistics, or quotes.${searchContext ? `\n\n${searchContext}` : ""}`;
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
