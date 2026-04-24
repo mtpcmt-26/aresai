@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Moon, Sun } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { ModeSelector } from "@/components/ModeSelector";
 import { AgeGateDialog } from "@/components/AgeGateDialog";
 import { ChatInterface } from "@/components/ChatInterface";
@@ -18,8 +19,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading, ageConfirmed, confirmAge } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/auth", { replace: true });
+  }, [authLoading, user, navigate]);
+
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const existing = loadConversations();
     return existing.length > 0 ? existing : [newConversation("normal")];
@@ -30,7 +39,6 @@ const Index = () => {
   });
 
   const [pendingMode, setPendingMode] = useState<ModeId | null>(null);
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [dark, setDark] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -163,8 +171,8 @@ const Index = () => {
 
         <AgeGateDialog
           open={pendingMode === "0-filter"}
-          onConfirm={() => {
-            setAgeConfirmed(true);
+          onConfirm={async () => {
+            await confirmAge();
             updateActive({ mode: "0-filter" });
             setPendingMode(null);
           }}
