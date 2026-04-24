@@ -1,11 +1,17 @@
 // Ares chat edge function — streams from Groq with mode-specific system prompts.
-// For time-sensitive questions, performs a Firecrawl web search first and injects
-// the results so Ares can answer with current information instead of refusing.
+// Requires authenticated requests. Validates payload size. For time-sensitive
+// questions, performs a Firecrawl web search first and injects results.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const MAX_MESSAGES = 50;
+const MAX_MESSAGE_CHARS = 4000;
+const ALLOWED_ROLES = new Set(["user", "assistant"]);
 
 const BASE_IDENTITY = `You are Ares, a confident, direct, assertive AI.
 
@@ -108,8 +114,6 @@ MODE: SHORT
 - Direct and concise only.`,
 };
 
-// Heuristic: should we run a live web search before answering?
-// Triggers on time-sensitive keywords or "current/latest/now/today" style questions.
 const TIME_SENSITIVE_PATTERNS = [
   /\b(current|currently|latest|recent|recently|today|tonight|this (week|month|year)|right now|as of|present|now)\b/i,
   /\b(who is|who's)\s+(the\s+)?(current\s+)?(president|prime minister|ceo|leader|champion|king|queen|chancellor|pope|emperor)/i,
@@ -139,18 +143,13 @@ async function firecrawlSearch(query: string, apiKey: string): Promise<Firecrawl
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        query,
-        limit: 5,
-      }),
+      body: JSON.stringify({ query, limit: 5 }),
     });
     if (!res.ok) {
       console.error("Firecrawl search failed:", res.status, await res.text());
       return [];
     }
     const data = await res.json();
-    // v2 search response: { success, data: { web: [{ url, title, description }, ...] } }
-    // older shape: { success, data: [...] }
     const web = data?.data?.web ?? data?.data ?? [];
     if (!Array.isArray(web)) return [];
     return web.slice(0, 5).map((r: Record<string, unknown>) => ({
@@ -178,20 +177,83 @@ The following results were just retrieved from the live web. Cross-reference the
 ${lines.join("\n\n")}`;
 }
 
+function jsonResponse(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, mode } = await req.json();
+    // ---- Auth: verify the caller is a signed-in user ----
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) return jsonResponse({ error: "Unauthorized" }, 401);
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: userData, error: userErr } = await supabaseAuth.auth.getUser(token);
+    if (userErr || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401);
+    const userId = userData.user.id;
+
+    // ---- Payload validation ----
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return jsonResponse({ error: "Invalid request body" }, 400);
+    }
+    const { messages, mode } = body as { messages?: unknown; mode?: unknown };
 
     if (!Array.isArray(messages)) {
-      return new Response(JSON.stringify({ error: "messages must be an array" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "messages must be an array" }, 400);
+    }
+    if (messages.length === 0) {
+      return jsonResponse({ error: "messages cannot be empty" }, 400);
+    }
+    if (messages.length > MAX_MESSAGES) {
+      return jsonResponse({ error: `Too many messages (max ${MAX_MESSAGES})` }, 400);
+    }
+    for (const m of messages) {
+      if (!m || typeof m !== "object") {
+        return jsonResponse({ error: "Invalid message" }, 400);
+      }
+      const mm = m as { role?: unknown; content?: unknown };
+      if (typeof mm.role !== "string" || !ALLOWED_ROLES.has(mm.role)) {
+        return jsonResponse({ error: "Invalid message role" }, 400);
+      }
+      if (typeof mm.content !== "string") {
+        return jsonResponse({ error: "Message content must be a string" }, 400);
+      }
+      if (mm.content.length > MAX_MESSAGE_CHARS) {
+        return jsonResponse(
+          { error: `Message too long (max ${MAX_MESSAGE_CHARS} characters)` },
+          400,
+        );
+      }
     }
 
     const modeKey = typeof mode === "string" && MODE_PROMPTS[mode] ? mode : "normal";
+
+    // ---- 0-filter requires server-side age confirmation ----
+    if (modeKey === "0-filter") {
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("age_confirmed_13_plus")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!profile?.age_confirmed_13_plus) {
+        return jsonResponse({ error: "Age confirmation required for 0-Filter mode" }, 403);
+      }
+    }
+
     const today = new Date().toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
@@ -200,8 +262,9 @@ Deno.serve(async (req) => {
       timeZone: "UTC",
     });
 
-    // Look at the latest user message — if it looks time-sensitive, run a web search.
-    const lastUser = [...messages].reverse().find((m: { role: string; content: string }) => m.role === "user");
+    const lastUser = [...(messages as Array<{ role: string; content: string }>)]
+      .reverse()
+      .find((m) => m.role === "user");
     const userText: string = typeof lastUser?.content === "string" ? lastUser.content : "";
 
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
@@ -225,7 +288,10 @@ LIVE INFORMATION POLICY:
 - Never fabricate URLs, statistics, or quotes.${searchContext ? `\n\n${searchContext}` : ""}`;
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
+    if (!GROQ_API_KEY) {
+      console.error("GROQ_API_KEY is not configured");
+      return jsonResponse({ error: "Service temporarily unavailable" }, 500);
+    }
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -245,33 +311,28 @@ LIVE INFORMATION POLICY:
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Slow down and try again shortly." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        return jsonResponse(
+          { error: "Rate limit exceeded. Slow down and try again shortly." },
+          429,
         );
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Add funds in Lovable workspace settings." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        return jsonResponse(
+          { error: "AI credits exhausted. Add funds in Lovable workspace settings." },
+          402,
         );
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "AI gateway error" }, 500);
     }
 
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
+    // Keep details server-side; do not leak internals to clients.
     console.error("chat error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return jsonResponse({ error: "Internal server error" }, 500);
   }
 });

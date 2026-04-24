@@ -5,7 +5,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { User, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
@@ -13,6 +16,14 @@ interface Props {
 }
 
 export const AccountDialog = ({ open, onOpenChange }: Props) => {
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out.");
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-sm border-border">
@@ -21,7 +32,7 @@ export const AccountDialog = ({ open, onOpenChange }: Props) => {
             Account
           </DialogTitle>
           <DialogDescription>
-            Account features are coming soon.
+            Manage your session.
           </DialogDescription>
         </DialogHeader>
 
@@ -30,11 +41,14 @@ export const AccountDialog = ({ open, onOpenChange }: Props) => {
             <User className="h-6 w-6 text-muted-foreground" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Sign in to sync conversations across devices.
+            {user?.email ?? "Not signed in"}
           </p>
-          <p className="text-xs text-muted-foreground/70">
-            Conversations are currently stored locally on this device.
-          </p>
+          {user && (
+            <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
