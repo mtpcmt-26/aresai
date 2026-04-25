@@ -123,7 +123,7 @@ const Index = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-background font-body text-foreground">
+      <div className="ares-shell flex h-screen w-full bg-background font-body text-foreground">
         <AppSidebar
           conversations={conversations}
           activeId={active.id}
@@ -136,7 +136,7 @@ const Index = () => {
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Header */}
-          <header className="border-b border-border">
+          <header className="ares-shell-header border-b border-border">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
               <div className="flex items-center gap-3">
                 <SidebarTrigger className="-ml-1" />

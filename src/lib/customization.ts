@@ -135,5 +135,6 @@ export const applyCustomization = (settings: AresSettings) => {
 
   // Background
   const bg = BACKGROUNDS.find((b) => b.key === settings.background) ?? BACKGROUNDS[0];
-  root.style.setProperty("--ares-background", bg.css || "");
+  root.style.setProperty("--ares-background", bg.css || "none");
+  root.classList.toggle("has-custom-bg", settings.background !== "default");
 };
