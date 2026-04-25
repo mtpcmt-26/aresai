@@ -10,36 +10,32 @@ import { CustomizeDialog } from "@/components/CustomizeDialog";
 import { AccountDialog } from "@/components/AccountDialog";
 import { ModeId } from "@/lib/modes";
 import { Msg } from "@/components/ChatMessage";
-import {
-  Conversation,
-  deriveTitle,
-  loadConversations,
-  newConversation,
-  saveConversations,
-} from "@/lib/conversations";
+import { deriveTitle } from "@/lib/conversations";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { useConversations } from "@/hooks/useConversations";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, ageConfirmed, confirmAge } = useAuth();
   const { settings, update: updateSettings } = useUserSettings();
+  const {
+    conversations,
+    activeId,
+    setActiveId,
+    loading: convLoading,
+    updateConversation,
+    createConversation,
+    deleteConversation,
+    clearAll,
+  } = useConversations();
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
   }, [authLoading, user, navigate]);
-
-  const [conversations, setConversations] = useState<Conversation[]>(() => {
-    const existing = loadConversations();
-    return existing.length > 0 ? existing : [newConversation("normal")];
-  });
-  const [activeId, setActiveId] = useState<string>(() => {
-    const existing = loadConversations();
-    return (existing[0]?.id) ?? conversations[0].id;
-  });
 
   const [pendingMode, setPendingMode] = useState<ModeId | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -53,73 +49,50 @@ const Index = () => {
     [conversations, activeId],
   );
 
-  useEffect(() => {
-    saveConversations(conversations);
-  }, [conversations]);
-
   const toggleTheme = () => {
     updateSettings({ theme: dark ? "light" : "dark" });
   };
 
-  const updateActive = (patch: Partial<Conversation>) => {
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === active.id ? { ...c, ...patch, updatedAt: Date.now() } : c,
-      ),
-    );
-  };
-
   const handleSelectMode = (id: ModeId) => {
+    if (!active) return;
     if (id === "0-filter" && !ageConfirmed) {
       setPendingMode(id);
       return;
     }
-    updateActive({ mode: id });
+    updateConversation(active.id, { mode: id });
   };
 
   const handleMessagesChange = (updater: (prev: Msg[]) => Msg[]) => {
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== active.id) return c;
-        const nextMessages = updater(c.messages);
-        const nextTitle =
-          c.title === "New chat" ? deriveTitle(nextMessages) : c.title;
-        return {
-          ...c,
-          messages: nextMessages,
-          title: nextTitle,
-          updatedAt: Date.now(),
-        };
-      }),
-    );
-  };
-
-  const handleNew = () => {
-    const conv = newConversation(active?.mode ?? "normal");
-    setConversations((prev) => [conv, ...prev]);
-    setActiveId(conv.id);
-  };
-
-  const handleDelete = (id: string) => {
-    setConversations((prev) => {
-      const remaining = prev.filter((c) => c.id !== id);
-      if (remaining.length === 0) {
-        const fresh = newConversation("normal");
-        setActiveId(fresh.id);
-        return [fresh];
-      }
-      if (id === activeId) setActiveId(remaining[0].id);
-      return remaining;
+    if (!active) return;
+    updateConversation(active.id, (prev) => {
+      const nextMessages = updater(prev.messages);
+      const nextTitle =
+        prev.title === "New chat" ? deriveTitle(nextMessages) : prev.title;
+      return { messages: nextMessages, title: nextTitle };
     });
   };
 
+  const handleNew = () => {
+    void createConversation(active?.mode ?? "normal");
+  };
+
+  const handleDelete = (id: string) => {
+    void deleteConversation(id);
+  };
+
   const handleClearAll = () => {
-    const fresh = newConversation("normal");
-    setConversations([fresh]);
-    setActiveId(fresh.id);
+    void clearAll();
     setSettingsOpen(false);
     toast("All conversations cleared.");
   };
+
+  if (authLoading || convLoading || !active) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background text-muted-foreground">
+        <div className="font-display text-xs uppercase tracking-[0.2em]">Loading…</div>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -176,7 +149,7 @@ const Index = () => {
           open={pendingMode === "0-filter"}
           onConfirm={async () => {
             await confirmAge();
-            updateActive({ mode: "0-filter" });
+            updateConversation(active.id, { mode: "0-filter" });
             setPendingMode(null);
           }}
           onCancel={() => {
