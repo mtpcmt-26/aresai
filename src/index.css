@@ -143,9 +143,9 @@
   html.has-custom-bg .ares-shell,
   html.has-custom-bg .ares-shell-header,
   html.has-custom-bg [data-sidebar="sidebar"] {
-    background-color: hsl(var(--background) / 0.6) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: transparent !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
