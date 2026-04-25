@@ -149,7 +149,7 @@ const Index = () => {
           open={pendingMode === "0-filter"}
           onConfirm={async () => {
             await confirmAge();
-            updateActive({ mode: "0-filter" });
+            updateConversation(active.id, { mode: "0-filter" });
             setPendingMode(null);
           }}
           onCancel={() => {
