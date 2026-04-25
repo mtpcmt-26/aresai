@@ -132,7 +132,20 @@
     background-image: var(--ares-background, none);
     background-size: cover;
     background-attachment: fixed;
+    background-position: center;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* When user picks a custom background, let it show through the app shell */
+  html.has-custom-bg body {
+    background-color: transparent;
+  }
+  html.has-custom-bg .ares-shell,
+  html.has-custom-bg .ares-shell-header,
+  html.has-custom-bg [data-sidebar="sidebar"] {
+    background-color: hsl(var(--background) / 0.6) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 }
 
