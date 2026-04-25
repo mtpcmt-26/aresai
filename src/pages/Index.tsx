@@ -6,6 +6,7 @@ import { AgeGateDialog } from "@/components/AgeGateDialog";
 import { ChatInterface } from "@/components/ChatInterface";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { CustomizeDialog } from "@/components/CustomizeDialog";
 import { AccountDialog } from "@/components/AccountDialog";
 import { ModeId } from "@/lib/modes";
 import { Msg } from "@/components/ChatMessage";
@@ -20,10 +21,12 @@ import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserSettings } from "@/hooks/useUserSettings";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, ageConfirmed, confirmAge } = useAuth();
+  const { settings, update: updateSettings } = useUserSettings();
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
@@ -39,9 +42,11 @@ const Index = () => {
   });
 
   const [pendingMode, setPendingMode] = useState<ModeId | null>(null);
-  const [dark, setDark] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+
+  const dark = settings.theme !== "light";
 
   const active = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? conversations[0],
@@ -53,9 +58,7 @@ const Index = () => {
   }, [conversations]);
 
   const toggleTheme = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
+    updateSettings({ theme: dark ? "light" : "dark" });
   };
 
   const updateActive = (patch: Partial<Conversation>) => {
@@ -188,7 +191,13 @@ const Index = () => {
           dark={dark}
           onToggleTheme={toggleTheme}
           onClearAll={handleClearAll}
+          onOpenCustomize={() => {
+            setSettingsOpen(false);
+            setCustomizeOpen(true);
+          }}
         />
+
+        <CustomizeDialog open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         <AccountDialog open={accountOpen} onOpenChange={setAccountOpen} />
       </div>
