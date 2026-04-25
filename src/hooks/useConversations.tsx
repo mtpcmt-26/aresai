@@ -51,7 +51,7 @@ export const useConversations = () => {
               title: c.title || "New chat",
               mode: c.mode || "normal",
               messages: c.messages ?? [],
-            }));
+            })) as any;
             await supabase.from("conversations").upsert(rows, { onConflict: "id" });
           }
           localStorage.removeItem(LEGACY_KEY);
@@ -87,7 +87,7 @@ export const useConversations = () => {
           title: fresh.title,
           mode: fresh.mode,
           messages: fresh.messages,
-        });
+        } as any);
         convs = [fresh];
       }
 
@@ -118,7 +118,7 @@ export const useConversations = () => {
             title: conv.title,
             mode: conv.mode,
             messages: conv.messages,
-          },
+          } as any,
           { onConflict: "id" },
         );
       }, 600);
@@ -156,7 +156,7 @@ export const useConversations = () => {
           title: conv.title,
           mode: conv.mode,
           messages: conv.messages,
-        });
+        } as any);
       }
       return conv;
     },
@@ -199,7 +199,7 @@ export const useConversations = () => {
         title: fresh.title,
         mode: fresh.mode,
         messages: fresh.messages,
-      });
+      } as any);
     }
     knownIds.current = new Set([fresh.id]);
     setConversations([fresh]);
