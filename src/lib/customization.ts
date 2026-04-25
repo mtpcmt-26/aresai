@@ -49,10 +49,25 @@ export const ACCENTS: { key: AccentKey; label: string; hsl: string }[] = [
 ];
 
 export const BACKGROUNDS: { key: BackgroundKey; label: string; preview: string; css: string }[] = [
-  { key: "default", label: "Default", preview: "hsl(var(--background))", css: "" },
-  { key: "solid-black", label: "Pure Black", preview: "#000000", css: "#000000" },
-  { key: "solid-white", label: "Pure White", preview: "#ffffff", css: "#ffffff" },
-  { key: "solid-slate", label: "Slate", preview: "#1e293b", css: "#1e293b" },
+  { key: "default", label: "Default", preview: "hsl(var(--background))", css: "none" },
+  {
+    key: "solid-black",
+    label: "Pure Black",
+    preview: "#000000",
+    css: "linear-gradient(#000000, #000000)",
+  },
+  {
+    key: "solid-white",
+    label: "Pure White",
+    preview: "#ffffff",
+    css: "linear-gradient(#ffffff, #ffffff)",
+  },
+  {
+    key: "solid-slate",
+    label: "Slate",
+    preview: "#1e293b",
+    css: "linear-gradient(#1e293b, #1e293b)",
+  },
   {
     key: "gradient-sunset",
     label: "Sunset",
@@ -75,22 +90,22 @@ export const BACKGROUNDS: { key: BackgroundKey; label: string; preview: string; 
     key: "wallpaper-grid",
     label: "Grid",
     preview:
-      "repeating-linear-gradient(0deg, #1a1a1a 0 24px, #222 24px 25px), repeating-linear-gradient(90deg, transparent 0 24px, #222 24px 25px)",
-    css: "repeating-linear-gradient(0deg, hsl(var(--background)) 0 24px, hsl(var(--border)) 24px 25px), repeating-linear-gradient(90deg, hsl(var(--background)) 0 24px, hsl(var(--border)) 24px 25px)",
+      "repeating-linear-gradient(0deg, #1a1a1a 0 24px, #2a2a2a 24px 25px), repeating-linear-gradient(90deg, #1a1a1a 0 24px, #2a2a2a 24px 25px)",
+    css: "repeating-linear-gradient(0deg, hsl(var(--background)) 0 24px, hsl(var(--border)) 24px 25px), repeating-linear-gradient(90deg, transparent 0 24px, hsl(var(--border)) 24px 25px)",
   },
   {
     key: "wallpaper-noise",
     label: "Noise",
     preview:
-      "radial-gradient(circle at 20% 30%, #2a2a2a 0%, transparent 40%), radial-gradient(circle at 80% 70%, #333 0%, transparent 40%), #0a0a0a",
-    css: "radial-gradient(circle at 20% 30%, hsl(var(--muted)) 0%, transparent 40%), radial-gradient(circle at 80% 70%, hsl(var(--muted)) 0%, transparent 40%), hsl(var(--background))",
+      "radial-gradient(circle at 20% 30%, #2a2a2a 0%, transparent 40%), radial-gradient(circle at 80% 70%, #333 0%, transparent 40%), linear-gradient(#0a0a0a, #0a0a0a)",
+    css: "radial-gradient(circle at 20% 30%, hsl(var(--muted)) 0%, transparent 40%), radial-gradient(circle at 80% 70%, hsl(var(--muted)) 0%, transparent 40%), linear-gradient(hsl(var(--background)), hsl(var(--background)))",
   },
   {
     key: "wallpaper-mesh",
     label: "Mesh",
     preview:
-      "radial-gradient(at 0% 0%, #ff6b6b 0%, transparent 50%), radial-gradient(at 100% 100%, #4ecdc4 0%, transparent 50%), #1a1a2e",
-    css: "radial-gradient(at 0% 0%, hsl(var(--accent) / 0.3) 0%, transparent 50%), radial-gradient(at 100% 100%, hsl(var(--accent) / 0.2) 0%, transparent 50%), hsl(var(--background))",
+      "radial-gradient(at 0% 0%, #ff6b6b 0%, transparent 50%), radial-gradient(at 100% 100%, #4ecdc4 0%, transparent 50%), linear-gradient(#1a1a2e, #1a1a2e)",
+    css: "radial-gradient(at 0% 0%, hsl(var(--accent) / 0.3) 0%, transparent 50%), radial-gradient(at 100% 100%, hsl(var(--accent) / 0.2) 0%, transparent 50%), linear-gradient(hsl(var(--background)), hsl(var(--background)))",
   },
 ];
 
