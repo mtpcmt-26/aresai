@@ -194,7 +194,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
       {/* Composer */}
       <div className="border-t border-border bg-background/80 backdrop-blur">
         <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6">
-          <div className="relative flex items-end gap-2 rounded-sm border border-border bg-card focus-within:border-foreground/40">
+          <div className="relative flex flex-col rounded-sm border border-border bg-card focus-within:border-foreground/40">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -203,27 +203,30 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
               rows={1}
               className="min-h-[52px] max-h-40 resize-none border-0 bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-            <div className="flex items-center gap-1 p-2">
-              {messages.length > 0 && (
+            <div className="flex items-center justify-between gap-2 border-t border-border/60 p-2">
+              <ModelSelector value={model} onChange={handleModelChange} />
+              <div className="flex items-center gap-1">
+                {messages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMessages(() => [])}
+                    className="h-8 w-8"
+                    aria-label="Clear chat"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
                 <Button
-                  variant="ghost"
+                  onClick={send}
+                  disabled={!input.trim() || loading}
                   size="icon"
-                  onClick={() => setMessages(() => [])}
-                  className="h-8 w-8"
-                  aria-label="Clear chat"
+                  className="h-8 w-8 bg-foreground text-background hover:bg-foreground/90"
+                  aria-label="Send"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <ArrowUp className="h-4 w-4" />
                 </Button>
-              )}
-              <Button
-                onClick={send}
-                disabled={!input.trim() || loading}
-                size="icon"
-                className="h-8 w-8 bg-foreground text-background hover:bg-foreground/90"
-                aria-label="Send"
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
+              </div>
             </div>
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
