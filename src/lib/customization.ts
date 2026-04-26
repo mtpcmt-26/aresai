@@ -17,7 +17,7 @@ export type BackgroundKey =
 
 export interface AresSettings {
   font: FontKey;
-  background: BackgroundKey;
+  background: BackgroundKey | string;
   theme: ThemeKey;
   accent_color: AccentKey;
 }
