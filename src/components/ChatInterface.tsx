@@ -4,6 +4,8 @@ import { ChatMessage, Msg } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ModeId, getMode } from "@/lib/modes";
+import { loadModelId, saveModelId } from "@/lib/models";
+import { ModelSelector } from "./ModelSelector";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,7 +22,13 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
   const setMessages = onMessagesChange;
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [model, setModel] = useState<string>(() => loadModelId());
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleModelChange = (id: string) => {
+    setModel(id);
+    saveModelId(id);
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -63,7 +71,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
           Authorization: `Bearer ${session.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ messages: next, mode }),
+        body: JSON.stringify({ messages: next, mode, model }),
       });
 
       if (!resp.ok || !resp.body) {
