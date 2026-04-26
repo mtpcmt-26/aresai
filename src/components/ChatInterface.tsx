@@ -229,8 +229,8 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
               </div>
             </div>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Ares tells the truth. He won't flatter you. Press Enter to send · Shift+Enter for newline.
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            Ares can make mistakes. Fact-check anything important.
           </p>
         </div>
       </div>

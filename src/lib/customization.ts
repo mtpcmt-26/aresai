@@ -1,6 +1,18 @@
 // Customization options for Ares UI
 
-export type FontKey = "modern" | "serif" | "mono" | "rounded" | "playful";
+export type FontKey =
+  | "modern"
+  | "serif"
+  | "mono"
+  | "rounded"
+  | "playful"
+  | "grotesk"
+  | "editorial"
+  | "geometric"
+  | "slab"
+  | "code"
+  | "display"
+  | "literary";
 export type ThemeKey = "light" | "dark" | "amoled";
 export type AccentKey = "blue" | "purple" | "green" | "orange" | "pink" | "red" | "teal";
 export type BackgroundKey =
@@ -11,9 +23,19 @@ export type BackgroundKey =
   | "gradient-sunset"
   | "gradient-ocean"
   | "gradient-forest"
+  | "gradient-aurora"
+  | "gradient-candy"
+  | "gradient-midnight"
+  | "gradient-peach"
+  | "gradient-mono"
   | "wallpaper-grid"
   | "wallpaper-noise"
-  | "wallpaper-mesh";
+  | "wallpaper-mesh"
+  | "wallpaper-dots"
+  | "wallpaper-stripes"
+  | "wallpaper-topo"
+  | "wallpaper-blueprint"
+  | "wallpaper-carbon";
 
 export interface AresSettings {
   font: FontKey;
@@ -35,6 +57,13 @@ export const FONTS: { key: FontKey; label: string; stack: string }[] = [
   { key: "mono", label: "Mono", stack: "'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace" },
   { key: "rounded", label: "Rounded", stack: "'Nunito', 'SF Pro Rounded', ui-rounded, sans-serif" },
   { key: "playful", label: "Playful", stack: "'Comic Neue', 'Comic Sans MS', cursive" },
+  { key: "grotesk", label: "Grotesk", stack: "'Space Grotesk', ui-sans-serif, sans-serif" },
+  { key: "editorial", label: "Editorial", stack: "'Playfair Display', Georgia, serif" },
+  { key: "geometric", label: "Geometric", stack: "'DM Sans', ui-sans-serif, sans-serif" },
+  { key: "slab", label: "Slab", stack: "'IBM Plex Serif', Georgia, serif" },
+  { key: "code", label: "Code", stack: "'Fira Code', ui-monospace, monospace" },
+  { key: "display", label: "Display", stack: "'Bebas Neue', Impact, sans-serif" },
+  { key: "literary", label: "Literary", stack: "'Lora', Georgia, serif" },
 ];
 
 // HSL values (without hsl())
@@ -106,6 +135,71 @@ export const BACKGROUNDS: { key: BackgroundKey; label: string; preview: string; 
     preview:
       "radial-gradient(at 0% 0%, #ff6b6b 0%, transparent 50%), radial-gradient(at 100% 100%, #4ecdc4 0%, transparent 50%), linear-gradient(#1a1a2e, #1a1a2e)",
     css: "radial-gradient(at 0% 0%, hsl(var(--accent) / 0.3) 0%, transparent 50%), radial-gradient(at 100% 100%, hsl(var(--accent) / 0.2) 0%, transparent 50%), linear-gradient(hsl(var(--background)), hsl(var(--background)))",
+  },
+  {
+    key: "gradient-aurora",
+    label: "Aurora",
+    preview: "linear-gradient(135deg, #00c6ff 0%, #0072ff 50%, #7f00ff 100%)",
+    css: "linear-gradient(135deg, #00c6ff 0%, #0072ff 50%, #7f00ff 100%)",
+  },
+  {
+    key: "gradient-candy",
+    label: "Candy",
+    preview: "linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #fbc2eb 100%)",
+    css: "linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #fbc2eb 100%)",
+  },
+  {
+    key: "gradient-midnight",
+    label: "Midnight",
+    preview: "linear-gradient(135deg, #232526 0%, #414345 100%)",
+    css: "linear-gradient(135deg, #232526 0%, #414345 100%)",
+  },
+  {
+    key: "gradient-peach",
+    label: "Peach",
+    preview: "linear-gradient(135deg, #ed4264 0%, #ffedbc 100%)",
+    css: "linear-gradient(135deg, #ed4264 0%, #ffedbc 100%)",
+  },
+  {
+    key: "gradient-mono",
+    label: "Mono Fade",
+    preview: "linear-gradient(135deg, #0f0f0f 0%, #4a4a4a 100%)",
+    css: "linear-gradient(135deg, #0f0f0f 0%, #4a4a4a 100%)",
+  },
+  {
+    key: "wallpaper-dots",
+    label: "Dots",
+    preview:
+      "radial-gradient(#3a3a3a 1.5px, transparent 1.5px), linear-gradient(#0f0f0f, #0f0f0f)",
+    css: "radial-gradient(hsl(var(--border)) 1.5px, transparent 1.5px), linear-gradient(hsl(var(--background)), hsl(var(--background)))",
+  },
+  {
+    key: "wallpaper-stripes",
+    label: "Stripes",
+    preview:
+      "repeating-linear-gradient(45deg, #1a1a1a 0 12px, #262626 12px 24px)",
+    css: "repeating-linear-gradient(45deg, hsl(var(--background)) 0 12px, hsl(var(--muted)) 12px 24px)",
+  },
+  {
+    key: "wallpaper-topo",
+    label: "Topo",
+    preview:
+      "radial-gradient(circle at 30% 40%, #1f2937 0 20%, transparent 21%), radial-gradient(circle at 70% 60%, #374151 0 28%, transparent 29%), linear-gradient(#0b1220, #0b1220)",
+    css: "radial-gradient(circle at 30% 40%, hsl(var(--muted)) 0 20%, transparent 21%), radial-gradient(circle at 70% 60%, hsl(var(--secondary)) 0 28%, transparent 29%), linear-gradient(hsl(var(--background)), hsl(var(--background)))",
+  },
+  {
+    key: "wallpaper-blueprint",
+    label: "Blueprint",
+    preview:
+      "repeating-linear-gradient(0deg, #0b3d91 0 24px, #1453c4 24px 25px), repeating-linear-gradient(90deg, #0b3d91 0 24px, #1453c4 24px 25px)",
+    css: "repeating-linear-gradient(0deg, #0b3d91 0 24px, #1453c4 24px 25px), repeating-linear-gradient(90deg, transparent 0 24px, #1453c4 24px 25px)",
+  },
+  {
+    key: "wallpaper-carbon",
+    label: "Carbon",
+    preview:
+      "repeating-linear-gradient(45deg, #1a1a1a 0 6px, #2a2a2a 6px 12px), repeating-linear-gradient(-45deg, #1a1a1a 0 6px, #2a2a2a 6px 12px)",
+    css: "repeating-linear-gradient(45deg, #1a1a1a 0 6px, #2a2a2a 6px 12px), repeating-linear-gradient(-45deg, #1a1a1a 0 6px, #2a2a2a 6px 12px)",
   },
 ];
 
