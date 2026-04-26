@@ -1,6 +1,18 @@
 // Customization options for Ares UI
 
-export type FontKey = "modern" | "serif" | "mono" | "rounded" | "playful";
+export type FontKey =
+  | "modern"
+  | "serif"
+  | "mono"
+  | "rounded"
+  | "playful"
+  | "grotesk"
+  | "editorial"
+  | "geometric"
+  | "slab"
+  | "code"
+  | "display"
+  | "literary";
 export type ThemeKey = "light" | "dark" | "amoled";
 export type AccentKey = "blue" | "purple" | "green" | "orange" | "pink" | "red" | "teal";
 export type BackgroundKey =
@@ -11,9 +23,19 @@ export type BackgroundKey =
   | "gradient-sunset"
   | "gradient-ocean"
   | "gradient-forest"
+  | "gradient-aurora"
+  | "gradient-candy"
+  | "gradient-midnight"
+  | "gradient-peach"
+  | "gradient-mono"
   | "wallpaper-grid"
   | "wallpaper-noise"
-  | "wallpaper-mesh";
+  | "wallpaper-mesh"
+  | "wallpaper-dots"
+  | "wallpaper-stripes"
+  | "wallpaper-topo"
+  | "wallpaper-blueprint"
+  | "wallpaper-carbon";
 
 export interface AresSettings {
   font: FontKey;
@@ -35,6 +57,13 @@ export const FONTS: { key: FontKey; label: string; stack: string }[] = [
   { key: "mono", label: "Mono", stack: "'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace" },
   { key: "rounded", label: "Rounded", stack: "'Nunito', 'SF Pro Rounded', ui-rounded, sans-serif" },
   { key: "playful", label: "Playful", stack: "'Comic Neue', 'Comic Sans MS', cursive" },
+  { key: "grotesk", label: "Grotesk", stack: "'Space Grotesk', ui-sans-serif, sans-serif" },
+  { key: "editorial", label: "Editorial", stack: "'Playfair Display', Georgia, serif" },
+  { key: "geometric", label: "Geometric", stack: "'DM Sans', ui-sans-serif, sans-serif" },
+  { key: "slab", label: "Slab", stack: "'IBM Plex Serif', Georgia, serif" },
+  { key: "code", label: "Code", stack: "'Fira Code', ui-monospace, monospace" },
+  { key: "display", label: "Display", stack: "'Bebas Neue', Impact, sans-serif" },
+  { key: "literary", label: "Literary", stack: "'Lora', Georgia, serif" },
 ];
 
 // HSL values (without hsl())

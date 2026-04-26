@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Nunito:wght@400;600;700&family=Comic+Neue:wght@400;700&family=Space+Grotesk:wght@400;500;700&family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Serif:wght@400;600&family=Fira+Code:wght@400;500&family=Bebas+Neue&family=Lora:wght@400;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
