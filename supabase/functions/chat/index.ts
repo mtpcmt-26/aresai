@@ -13,6 +13,18 @@ const MAX_MESSAGES = 50;
 const MAX_MESSAGE_CHARS = 4000;
 const ALLOWED_ROLES = new Set(["user", "assistant"]);
 
+// Allow-list of selectable models. Keep in sync with src/lib/models.ts.
+// `groq/` prefix is stripped before sending to Groq.
+const ALLOWED_MODELS = new Set<string>([
+  "google/gemini-3-flash-preview",
+  "google/gemini-2.5-pro",
+  "google/gemini-2.5-flash-lite",
+  "openai/gpt-5",
+  "openai/gpt-5.2",
+  "groq/llama-3.3-70b-versatile",
+]);
+const DEFAULT_MODEL = "google/gemini-3-flash-preview";
+
 const WORLD_CONTEXT = `WORLD CONTEXT (GROUNDING — TREAT AS SOURCE OF TRUTH OVER TRAINING DATA):
 
 CURRENT BASELINE (2026):
@@ -281,7 +293,7 @@ Deno.serve(async (req) => {
     if (!body || typeof body !== "object") {
       return jsonResponse({ error: "Invalid request body" }, 400);
     }
-    const { messages, mode } = body as { messages?: unknown; mode?: unknown };
+    const { messages, mode, model } = body as { messages?: unknown; mode?: unknown; model?: unknown };
 
     if (!Array.isArray(messages)) {
       return jsonResponse({ error: "messages must be an array" }, 400);
@@ -361,20 +373,38 @@ LIVE INFORMATION POLICY:
 - If NO live search results were provided and the question is genuinely time-sensitive, rely on the WORLD CONTEXT block above first; if still unknown, give your best knowledge with a brief caveat.
 - Never fabricate URLs, statistics, or quotes.${searchContext ? `\n\n${searchContext}` : ""}`;
 
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) {
-      console.error("GROQ_API_KEY is not configured");
+    // ---- Model routing ----
+    const requestedModel =
+      typeof model === "string" && ALLOWED_MODELS.has(model) ? model : DEFAULT_MODEL;
+    const useGroq = requestedModel.startsWith("groq/");
+
+    let endpoint: string;
+    let apiKey: string | undefined;
+    let modelForApi: string;
+
+    if (useGroq) {
+      apiKey = Deno.env.get("GROQ_API_KEY");
+      endpoint = "https://api.groq.com/openai/v1/chat/completions";
+      modelForApi = requestedModel.slice("groq/".length);
+    } else {
+      apiKey = Deno.env.get("LOVABLE_API_KEY");
+      endpoint = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      modelForApi = requestedModel;
+    }
+
+    if (!apiKey) {
+      console.error(`${useGroq ? "GROQ_API_KEY" : "LOVABLE_API_KEY"} is not configured`);
       return jsonResponse({ error: "Service temporarily unavailable" }, 500);
     }
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: modelForApi,
         stream: true,
         messages: [
           { role: "system", content: systemPrompt },
