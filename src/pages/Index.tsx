@@ -110,7 +110,7 @@ const Index = () => {
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Header */}
           <header className="ares-shell-header border-b border-border">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
               <div className="flex items-center gap-3">
                 <SidebarTrigger className="-ml-1" />
                 <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-foreground font-display text-base font-extrabold text-background">
@@ -125,12 +125,14 @@ const Index = () => {
                   </p>
                 </div>
               </div>
+
+              <div className="order-3 w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-sm sm:px-4">
+                <ModeSelector current={active.mode} onSelect={handleSelectMode} />
+              </div>
+
               <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
                 {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-            </div>
-            <div className="mx-auto max-w-6xl px-4 pb-3 sm:px-6">
-              <ModeSelector current={active.mode} onSelect={handleSelectMode} />
             </div>
           </header>
 
