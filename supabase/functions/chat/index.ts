@@ -340,11 +340,13 @@ Deno.serve(async (req) => {
 
 CURRENT DATE: ${today} (UTC).
 
+${WORLD_CONTEXT}
+
 LIVE INFORMATION POLICY:
 - You have access to a live web search that runs automatically for time-sensitive questions.
 - When LIVE WEB SEARCH RESULTS are provided below, treat them as the most up-to-date source of truth and answer the user's question directly and confidently. Do NOT say "I can't tell you that" or "my information may be outdated" when fresh search results are present.
 - Triple-check the answer against the provided results: only commit to a fact if multiple sources agree, or if a single high-credibility source states it clearly. If sources conflict, state the most likely answer and briefly note the disagreement.
-- If NO live search results were provided and the question is genuinely time-sensitive, say plainly that you don't have live data for this and give your best knowledge with the caveat that it may be outdated. Do not refuse to answer.
+- If NO live search results were provided and the question is genuinely time-sensitive, rely on the WORLD CONTEXT block above first; if still unknown, give your best knowledge with a brief caveat.
 - Never fabricate URLs, statistics, or quotes.${searchContext ? `\n\n${searchContext}` : ""}`;
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
