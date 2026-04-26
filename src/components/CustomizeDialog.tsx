@@ -76,7 +76,7 @@ export const CustomizeDialog = ({ open, onOpenChange }: Props) => {
             <Label className="font-display text-xs uppercase tracking-[0.18em] text-muted-foreground">
               Font
             </Label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
               {FONTS.map((f) => {
                 const active = settings.font === f.key;
                 return (
@@ -171,7 +171,7 @@ export const CustomizeDialog = ({ open, onOpenChange }: Props) => {
             <Label className="font-display text-xs uppercase tracking-[0.18em] text-muted-foreground">
               Background
             </Label>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
               {BACKGROUNDS.map((b) => {
                 const active = !hasCustomBg && settings.background === b.key;
                 return (
