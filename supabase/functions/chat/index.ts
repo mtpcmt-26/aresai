@@ -13,6 +13,18 @@ const MAX_MESSAGES = 50;
 const MAX_MESSAGE_CHARS = 4000;
 const ALLOWED_ROLES = new Set(["user", "assistant"]);
 
+// Allow-list of selectable models. Keep in sync with src/lib/models.ts.
+// `groq/` prefix is stripped before sending to Groq.
+const ALLOWED_MODELS = new Set<string>([
+  "google/gemini-3-flash-preview",
+  "google/gemini-2.5-pro",
+  "google/gemini-2.5-flash-lite",
+  "openai/gpt-5",
+  "openai/gpt-5.2",
+  "groq/llama-3.3-70b-versatile",
+]);
+const DEFAULT_MODEL = "google/gemini-3-flash-preview";
+
 const WORLD_CONTEXT = `WORLD CONTEXT (GROUNDING — TREAT AS SOURCE OF TRUTH OVER TRAINING DATA):
 
 CURRENT BASELINE (2026):
@@ -281,7 +293,7 @@ Deno.serve(async (req) => {
     if (!body || typeof body !== "object") {
       return jsonResponse({ error: "Invalid request body" }, 400);
     }
-    const { messages, mode } = body as { messages?: unknown; mode?: unknown };
+    const { messages, mode, model } = body as { messages?: unknown; mode?: unknown; model?: unknown };
 
     if (!Array.isArray(messages)) {
       return jsonResponse({ error: "messages must be an array" }, 400);
