@@ -374,7 +374,7 @@ LIVE INFORMATION POLICY:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-120b",
+        model: "llama-3.3-70b-versatile",
         stream: true,
         messages: [
           { role: "system", content: systemPrompt },
