@@ -17,10 +17,14 @@ import {
   BackgroundKey,
   FontKey,
   ThemeKey,
+  CUSTOM_BG_PREFIX,
+  isCustomBackground,
+  getCustomBackgroundUrl,
 } from "@/lib/customization";
 import { cn } from "@/lib/utils";
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { useRef } from "react";
 
 interface Props {
   open: boolean;
