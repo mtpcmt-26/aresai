@@ -183,9 +183,21 @@ const TIME_SENSITIVE_PATTERNS = [
   /\bhow (much|many)\b.*\b(cost|price|worth)\b/i,
 ];
 
-function isTimeSensitive(text: string): boolean {
+// Explicit user requests to look something up online or verify data.
+const SEARCH_INTENT_PATTERNS = [
+  /\b(search|google|look\s*up|lookup|check|verify|fact[-\s]?check|confirm|find\s+out|find\s+me)\b/i,
+  /\b(web\s*search|on\s+the\s+(web|internet)|online)\b/i,
+  /\b(browse|scrape|crawl|firecrawl)\b/i,
+  /\b(what'?s|whats)\s+(happening|going\s+on|new)\b/i,
+  /\b(any|latest|recent)\s+(news|updates?|info(rmation)?)\b/i,
+];
+
+function shouldWebSearch(text: string): boolean {
   if (!text) return false;
-  return TIME_SENSITIVE_PATTERNS.some((re) => re.test(text));
+  return (
+    TIME_SENSITIVE_PATTERNS.some((re) => re.test(text)) ||
+    SEARCH_INTENT_PATTERNS.some((re) => re.test(text))
+  );
 }
 
 interface FirecrawlSearchResult {
