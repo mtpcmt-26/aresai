@@ -341,7 +341,7 @@ Deno.serve(async (req) => {
 
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     let searchContext = "";
-    if (FIRECRAWL_API_KEY && userText && isTimeSensitive(userText)) {
+    if (FIRECRAWL_API_KEY && userText && shouldWebSearch(userText)) {
       console.log("Time-sensitive question detected. Running Firecrawl search…");
       const results = await firecrawlSearch(userText, FIRECRAWL_API_KEY);
       searchContext = formatSearchContext(userText, results);
