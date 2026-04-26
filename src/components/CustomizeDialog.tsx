@@ -33,8 +33,30 @@ interface Props {
 
 export const CustomizeDialog = ({ open, onOpenChange }: Props) => {
   const { settings, update, reset } = useUserSettings();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fontStack = FONTS.find((f) => f.key === settings.font)?.stack;
+  const customBgUrl = getCustomBackgroundUrl(settings.background);
+  const hasCustomBg = isCustomBackground(settings.background);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error("Image must be under 4MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      void update({ background: `${CUSTOM_BG_PREFIX}${dataUrl}` });
+      toast.success("Custom background applied.");
+    };
+    reader.onerror = () => toast.error("Could not read that image.");
+    reader.readAsDataURL(file);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
