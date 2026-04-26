@@ -17,7 +17,7 @@ export type BackgroundKey =
 
 export interface AresSettings {
   font: FontKey;
-  background: BackgroundKey;
+  background: BackgroundKey | string;
   theme: ThemeKey;
   accent_color: AccentKey;
 }
@@ -115,6 +115,15 @@ export const THEMES: { key: ThemeKey; label: string }[] = [
   { key: "amoled", label: "AMOLED" },
 ];
 
+// A custom background uploaded by the user is stored as: "custom:<dataURL>"
+export const CUSTOM_BG_PREFIX = "custom:";
+
+export const isCustomBackground = (value: string | undefined | null) =>
+  typeof value === "string" && value.startsWith(CUSTOM_BG_PREFIX);
+
+export const getCustomBackgroundUrl = (value: string | undefined | null) =>
+  isCustomBackground(value) ? (value as string).slice(CUSTOM_BG_PREFIX.length) : null;
+
 export const applyCustomization = (settings: AresSettings) => {
   const root = document.documentElement;
 
@@ -133,8 +142,14 @@ export const applyCustomization = (settings: AresSettings) => {
   root.style.setProperty("--accent", accent.hsl);
   root.style.setProperty("--ring", accent.hsl);
 
-  // Background
-  const bg = BACKGROUNDS.find((b) => b.key === settings.background) ?? BACKGROUNDS[0];
-  root.style.setProperty("--ares-background", bg.css || "none");
-  root.classList.toggle("has-custom-bg", settings.background !== "default");
+  // Background — supports preset keys or "custom:<dataURL>"
+  const customUrl = getCustomBackgroundUrl(settings.background);
+  if (customUrl) {
+    root.style.setProperty("--ares-background", `url("${customUrl}")`);
+    root.classList.add("has-custom-bg");
+  } else {
+    const bg = BACKGROUNDS.find((b) => b.key === settings.background) ?? BACKGROUNDS[0];
+    root.style.setProperty("--ares-background", bg.css || "none");
+    root.classList.toggle("has-custom-bg", settings.background !== "default");
+  }
 };

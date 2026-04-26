@@ -17,10 +17,14 @@ import {
   BackgroundKey,
   FontKey,
   ThemeKey,
+  CUSTOM_BG_PREFIX,
+  isCustomBackground,
+  getCustomBackgroundUrl,
 } from "@/lib/customization";
 import { cn } from "@/lib/utils";
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { useRef } from "react";
 
 interface Props {
   open: boolean;
@@ -29,8 +33,30 @@ interface Props {
 
 export const CustomizeDialog = ({ open, onOpenChange }: Props) => {
   const { settings, update, reset } = useUserSettings();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fontStack = FONTS.find((f) => f.key === settings.font)?.stack;
+  const customBgUrl = getCustomBackgroundUrl(settings.background);
+  const hasCustomBg = isCustomBackground(settings.background);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error("Image must be under 4MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      void update({ background: `${CUSTOM_BG_PREFIX}${dataUrl}` });
+      toast.success("Custom background applied.");
+    };
+    reader.onerror = () => toast.error("Could not read that image.");
+    reader.readAsDataURL(file);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,7 +173,7 @@ export const CustomizeDialog = ({ open, onOpenChange }: Props) => {
             </Label>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {BACKGROUNDS.map((b) => {
-                const active = settings.background === b.key;
+                const active = !hasCustomBg && settings.background === b.key;
                 return (
                   <button
                     key={b.key}
@@ -170,7 +196,59 @@ export const CustomizeDialog = ({ open, onOpenChange }: Props) => {
                   </button>
                 );
               })}
+
+              {/* Upload custom background tile */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "group relative flex aspect-square items-center justify-center overflow-hidden rounded-sm border-2 transition-colors",
+                  hasCustomBg
+                    ? "border-foreground"
+                    : "border-dashed border-border hover:border-foreground/40",
+                )}
+                style={
+                  customBgUrl
+                    ? {
+                        backgroundImage: `url("${customBgUrl}")`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : undefined
+                }
+                aria-label="Upload custom background"
+              >
+                {!customBgUrl && (
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                )}
+                {hasCustomBg && (
+                  <span className="absolute right-1 top-1 rounded-full bg-foreground p-0.5 text-background">
+                    <Check className="h-3 w-3" />
+                  </span>
+                )}
+                <span className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-0.5 text-left text-[10px] font-medium uppercase tracking-wider text-white">
+                  {hasCustomBg ? "Custom" : "Upload"}
+                </span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                  e.target.value = "";
+                }}
+              />
             </div>
+            {hasCustomBg && (
+              <button
+                onClick={() => update({ background: "default" })}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" /> Remove custom background
+              </button>
+            )}
           </section>
 
           {/* RESET */}
