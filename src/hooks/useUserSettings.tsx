@@ -29,7 +29,7 @@ const SettingsContext = createContext<Ctx | undefined>(undefined);
 
 const sanitize = (raw: any): AresSettings => ({
   font: (raw?.font as FontKey) || DEFAULT_SETTINGS.font,
-  background: (raw?.background as BackgroundKey) || DEFAULT_SETTINGS.background,
+  background: (raw?.background as string) || DEFAULT_SETTINGS.background,
   theme: (raw?.theme as ThemeKey) || DEFAULT_SETTINGS.theme,
   accent_color: (raw?.accent_color as AccentKey) || DEFAULT_SETTINGS.accent_color,
 });
