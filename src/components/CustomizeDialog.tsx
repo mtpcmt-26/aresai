@@ -173,7 +173,7 @@ export const CustomizeDialog = ({ open, onOpenChange }: Props) => {
             </Label>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {BACKGROUNDS.map((b) => {
-                const active = settings.background === b.key;
+                const active = !hasCustomBg && settings.background === b.key;
                 return (
                   <button
                     key={b.key}
@@ -196,7 +196,59 @@ export const CustomizeDialog = ({ open, onOpenChange }: Props) => {
                   </button>
                 );
               })}
+
+              {/* Upload custom background tile */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "group relative flex aspect-square items-center justify-center overflow-hidden rounded-sm border-2 transition-colors",
+                  hasCustomBg
+                    ? "border-foreground"
+                    : "border-dashed border-border hover:border-foreground/40",
+                )}
+                style={
+                  customBgUrl
+                    ? {
+                        backgroundImage: `url("${customBgUrl}")`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : undefined
+                }
+                aria-label="Upload custom background"
+              >
+                {!customBgUrl && (
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                )}
+                {hasCustomBg && (
+                  <span className="absolute right-1 top-1 rounded-full bg-foreground p-0.5 text-background">
+                    <Check className="h-3 w-3" />
+                  </span>
+                )}
+                <span className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-0.5 text-left text-[10px] font-medium uppercase tracking-wider text-white">
+                  {hasCustomBg ? "Custom" : "Upload"}
+                </span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                  e.target.value = "";
+                }}
+              />
             </div>
+            {hasCustomBg && (
+              <button
+                onClick={() => update({ background: "default" })}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" /> Remove custom background
+              </button>
+            )}
           </section>
 
           {/* RESET */}
