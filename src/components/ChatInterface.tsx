@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Trash2 } from "lucide-react";
+import { ArrowUp, Trash2, Paperclip, ImagePlus, X } from "lucide-react";
 import { ChatMessage, Msg } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,8 +8,11 @@ import { loadModelId, saveModelId } from "@/lib/models";
 import { ModelSelector } from "./ModelSelector";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const MAX_IMAGES = 4;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 
 interface Props {
   mode: ModeId;
@@ -17,12 +20,23 @@ interface Props {
   onMessagesChange: (updater: (prev: Msg[]) => Msg[]) => void;
 }
 
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+
 export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
   const meta = getMode(mode);
   const setMessages = onMessagesChange;
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [model, setModel] = useState<string>(() => loadModelId());
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [imageMode, setImageMode] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleModelChange = (id: string) => {
@@ -34,27 +48,40 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  const handleFiles = async (files: FileList | null) => {
+    if (!files) return;
+    const remaining = MAX_IMAGES - attachments.length;
+    const list = Array.from(files).slice(0, remaining);
+    const next: string[] = [];
+    for (const f of list) {
+      if (!f.type.startsWith("image/")) {
+        toast.error(`${f.name}: not an image`);
+        continue;
+      }
+      if (f.size > MAX_IMAGE_BYTES) {
+        toast.error(`${f.name}: over 5MB`);
+        continue;
+      }
+      next.push(await fileToDataUrl(f));
+    }
+    if (next.length) setAttachments((p) => [...p, ...next]);
+  };
+
+  const removeAttachment = (i: number) =>
+    setAttachments((p) => p.filter((_, idx) => idx !== i));
+
   const send = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if ((!text && attachments.length === 0) || loading) return;
     setInput("");
-    const next: Msg[] = [...messages, { role: "user", content: text }];
+    const userImages = attachments.slice();
+    setAttachments([]);
+    const wasImageMode = imageMode;
+
+    const userMsg: Msg = { role: "user", content: text, images: userImages.length ? userImages : undefined };
+    const next: Msg[] = [...messages, userMsg];
     setMessages(() => next);
     setLoading(true);
-
-    let assistantSoFar = "";
-    const upsert = (chunk: string) => {
-      assistantSoFar += chunk;
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant") {
-          return prev.map((m, i) =>
-            i === prev.length - 1 ? { ...m, content: assistantSoFar } : m,
-          );
-        }
-        return [...prev, { role: "assistant", content: assistantSoFar }];
-      });
-    };
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -64,6 +91,69 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
         setLoading(false);
         return;
       }
+
+      // ---- Image generation path ----
+      if (wasImageMode) {
+        const resp = await fetch(CHAT_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            imageGen: true,
+            prompt: text,
+            images: userImages, // for image edit
+          }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          toast.error(err.error || "Image generation failed.");
+          setLoading(false);
+          return;
+        }
+        const data = await resp.json();
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: data.text || "",
+            images: data.image ? [data.image] : undefined,
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+
+      // ---- Normal streaming chat ----
+      const payloadMessages = next.map((m) => {
+        if (m.role === "user" && m.images && m.images.length > 0) {
+          return {
+            role: "user",
+            content: [
+              ...(m.content ? [{ type: "text", text: m.content }] : []),
+              ...m.images.map((url) => ({ type: "image_url", image_url: { url } })),
+            ],
+          };
+        }
+        return { role: m.role, content: m.content };
+      });
+
+      let assistantSoFar = "";
+      const upsert = (chunk: string) => {
+        assistantSoFar += chunk;
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant") {
+            return prev.map((m, i) =>
+              i === prev.length - 1 ? { ...m, content: assistantSoFar } : m,
+            );
+          }
+          return [...prev, { role: "assistant", content: assistantSoFar }];
+        });
+      };
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
@@ -71,18 +161,14 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
           Authorization: `Bearer ${session.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ messages: next, mode, model }),
+        body: JSON.stringify({ messages: payloadMessages, mode, model }),
       });
 
       if (!resp.ok || !resp.body) {
-        if (resp.status === 429) {
-          toast.error("Rate limited. Slow down.");
-        } else if (resp.status === 402) {
-          toast.error("AI credits exhausted. Add funds in workspace settings.");
-        } else {
-          toast.error("Ares failed to respond.");
-        }
-        setMessages(() => next); // rollback assistant placeholder
+        if (resp.status === 429) toast.error("Rate limited. Slow down.");
+        else if (resp.status === 402) toast.error("AI credits exhausted.");
+        else toast.error("Ares failed to respond.");
+        setMessages(() => next);
         setLoading(false);
         return;
       }
@@ -119,21 +205,6 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
           }
         }
       }
-
-      if (buf.trim()) {
-        for (let raw of buf.split("\n")) {
-          if (!raw) continue;
-          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
-          if (!raw.startsWith("data: ")) continue;
-          const json = raw.slice(6).trim();
-          if (json === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(json);
-            const c = parsed.choices?.[0]?.delta?.content;
-            if (c) upsert(c);
-          } catch {}
-        }
-      }
     } catch (e) {
       console.error(e);
       toast.error("Connection error.");
@@ -166,7 +237,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
                 Ask Ares anything.
               </h2>
               <p className="max-w-md text-sm text-muted-foreground">
-                {meta.description} No flattery. No emotional validation. Just answers.
+                {meta.description} Attach images to analyze, or toggle image mode to generate.
               </p>
             </div>
           )}
@@ -195,16 +266,72 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
       <div className="border-t border-border bg-background/80 backdrop-blur">
         <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6">
           <div className="relative flex flex-col rounded-sm border border-border bg-card focus-within:border-foreground/40">
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 border-b border-border/60 p-2">
+                {attachments.map((src, i) => (
+                  <div key={i} className="relative h-16 w-16">
+                    <img src={src} alt="" className="h-full w-full rounded-sm border border-border object-cover" />
+                    <button
+                      onClick={() => removeAttachment(i)}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background"
+                      aria-label="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder={`Message Ares — ${meta.label} mode`}
+              placeholder={
+                imageMode
+                  ? attachments.length
+                    ? "Describe how to edit the attached image…"
+                    : "Describe an image to generate…"
+                  : `Message Ares — ${meta.label} mode`
+              }
               rows={1}
               className="min-h-[52px] max-h-40 resize-none border-0 bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <div className="flex items-center justify-between gap-2 border-t border-border/60 p-2">
-              <ModelSelector value={model} onChange={handleModelChange} />
+              <div className="flex items-center gap-1">
+                <ModelSelector value={model} onChange={handleModelChange} />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    handleFiles(e.target.files);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={attachments.length >= MAX_IMAGES}
+                  aria-label="Attach image"
+                  title="Attach image to analyze"
+                >
+                  <Paperclip className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-8 w-8", imageMode && "bg-accent text-accent-foreground")}
+                  onClick={() => setImageMode((v) => !v)}
+                  aria-label="Toggle image generation"
+                  title={imageMode ? "Image generation: ON" : "Generate an image"}
+                >
+                  <ImagePlus className="h-3.5 w-3.5" />
+                </Button>
+              </div>
               <div className="flex items-center gap-1">
                 {messages.length > 0 && (
                   <Button
@@ -219,7 +346,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
                 )}
                 <Button
                   onClick={send}
-                  disabled={!input.trim() || loading}
+                  disabled={(!input.trim() && attachments.length === 0) || loading}
                   size="icon"
                   className="h-8 w-8 bg-foreground text-background hover:bg-foreground/90"
                   aria-label="Send"
@@ -230,7 +357,9 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
             </div>
           </div>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">
-            Ares can make mistakes. Fact-check anything important.
+            {imageMode
+              ? "Image mode: Ares will generate or edit an image."
+              : "Ares can make mistakes. Fact-check anything important."}
           </p>
         </div>
       </div>
