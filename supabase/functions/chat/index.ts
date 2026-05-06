@@ -293,7 +293,57 @@ Deno.serve(async (req) => {
     if (!body || typeof body !== "object") {
       return jsonResponse({ error: "Invalid request body" }, 400);
     }
-    const { messages, mode, model } = body as { messages?: unknown; mode?: unknown; model?: unknown };
+    const { messages, mode, model, imageGen, prompt, images } = body as {
+      messages?: unknown;
+      mode?: unknown;
+      model?: unknown;
+      imageGen?: unknown;
+      prompt?: unknown;
+      images?: unknown;
+    };
+
+    // ---- Image generation / editing branch ----
+    if (imageGen === true) {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) return jsonResponse({ error: "Service unavailable" }, 500);
+      if (typeof prompt !== "string" || !prompt.trim()) {
+        return jsonResponse({ error: "Prompt is required" }, 400);
+      }
+      if (prompt.length > MAX_MESSAGE_CHARS) {
+        return jsonResponse({ error: "Prompt too long" }, 400);
+      }
+      const inputImages = Array.isArray(images) ? (images as unknown[]).filter((u) => typeof u === "string").slice(0, 4) as string[] : [];
+
+      const userContent: unknown[] = [{ type: "text", text: prompt }];
+      for (const url of inputImages) userContent.push({ type: "image_url", image_url: { url } });
+
+      const imgRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-image",
+          messages: [{ role: "user", content: userContent }],
+          modalities: ["image", "text"],
+        }),
+      });
+
+      if (!imgRes.ok) {
+        if (imgRes.status === 429) return jsonResponse({ error: "Rate limited. Try again shortly." }, 429);
+        if (imgRes.status === 402) return jsonResponse({ error: "AI credits exhausted." }, 402);
+        const t = await imgRes.text();
+        console.error("Image gen error:", imgRes.status, t);
+        return jsonResponse({ error: "Image generation failed" }, 500);
+      }
+      const imgData = await imgRes.json();
+      const msg = imgData?.choices?.[0]?.message ?? {};
+      const image = msg?.images?.[0]?.image_url?.url ?? null;
+      const text = typeof msg?.content === "string" ? msg.content : "";
+      if (!image) return jsonResponse({ error: "No image returned" }, 500);
+      return jsonResponse({ image, text }, 200);
+    }
 
     if (!Array.isArray(messages)) {
       return jsonResponse({ error: "messages must be an array" }, 400);
