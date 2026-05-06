@@ -418,10 +418,18 @@ Deno.serve(async (req) => {
       timeZone: "UTC",
     });
 
-    const lastUser = [...(messages as Array<{ role: string; content: string }>)]
+    const lastUser = [...(messages as Array<{ role: string; content: unknown }>)]
       .reverse()
       .find((m) => m.role === "user");
-    const userText: string = typeof lastUser?.content === "string" ? lastUser.content : "";
+    let userText = "";
+    if (typeof lastUser?.content === "string") {
+      userText = lastUser.content;
+    } else if (Array.isArray(lastUser?.content)) {
+      userText = (lastUser!.content as Array<{ type?: string; text?: string }>)
+        .filter((p) => p?.type === "text" && typeof p.text === "string")
+        .map((p) => p.text as string)
+        .join(" ");
+    }
 
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     let searchContext = "";
