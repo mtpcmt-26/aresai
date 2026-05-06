@@ -362,14 +362,36 @@ Deno.serve(async (req) => {
       if (typeof mm.role !== "string" || !ALLOWED_ROLES.has(mm.role)) {
         return jsonResponse({ error: "Invalid message role" }, 400);
       }
-      if (typeof mm.content !== "string") {
-        return jsonResponse({ error: "Message content must be a string" }, 400);
-      }
-      if (mm.content.length > MAX_MESSAGE_CHARS) {
-        return jsonResponse(
-          { error: `Message too long (max ${MAX_MESSAGE_CHARS} characters)` },
-          400,
-        );
+      if (typeof mm.content === "string") {
+        if (mm.content.length > MAX_MESSAGE_CHARS) {
+          return jsonResponse(
+            { error: `Message too long (max ${MAX_MESSAGE_CHARS} characters)` },
+            400,
+          );
+        }
+      } else if (Array.isArray(mm.content)) {
+        // multimodal content parts: { type: "text" | "image_url", ... }
+        let textLen = 0;
+        for (const part of mm.content as unknown[]) {
+          if (!part || typeof part !== "object") {
+            return jsonResponse({ error: "Invalid content part" }, 400);
+          }
+          const p = part as { type?: unknown; text?: unknown; image_url?: unknown };
+          if (p.type === "text") {
+            if (typeof p.text !== "string") return jsonResponse({ error: "Invalid text part" }, 400);
+            textLen += p.text.length;
+          } else if (p.type === "image_url") {
+            const iu = p.image_url as { url?: unknown } | undefined;
+            if (!iu || typeof iu.url !== "string") return jsonResponse({ error: "Invalid image_url part" }, 400);
+          } else {
+            return jsonResponse({ error: "Unsupported content part type" }, 400);
+          }
+        }
+        if (textLen > MAX_MESSAGE_CHARS) {
+          return jsonResponse({ error: `Message too long (max ${MAX_MESSAGE_CHARS} characters)` }, 400);
+        }
+      } else {
+        return jsonResponse({ error: "Message content must be a string or array" }, 400);
       }
     }
 
