@@ -43,6 +43,21 @@ const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [labsOn, setLabsOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("ares.labs.on.v1") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("ares.labs.on.v1", labsOn ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [labsOn]);
 
   const dark = settings.theme !== "light";
 
