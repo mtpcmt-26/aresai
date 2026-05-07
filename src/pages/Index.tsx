@@ -144,23 +144,49 @@ const Index = () => {
               </div>
 
               <div className="order-3 w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-sm sm:px-4">
-                <ModeSelector current={active.mode} onSelect={handleSelectMode} />
+                {!labsOn && <ModeSelector current={active.mode} onSelect={handleSelectMode} />}
               </div>
 
-              <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-3">
+                <label
+                  className={`flex items-center gap-2 rounded-sm border px-2.5 py-1.5 transition-colors ${
+                    labsOn
+                      ? "border-cyan-500/60 bg-cyan-500/10"
+                      : "border-border bg-card"
+                  }`}
+                  title="Toggle Ares Labs — full AI coding studio"
+                >
+                  <FlaskConical
+                    className={`h-3.5 w-3.5 ${labsOn ? "text-cyan-400" : "text-muted-foreground"}`}
+                  />
+                  <span
+                    className={`font-display text-[10px] font-bold uppercase tracking-[0.18em] ${
+                      labsOn ? "text-cyan-400" : "text-muted-foreground"
+                    }`}
+                  >
+                    Ares Labs
+                  </span>
+                  <Switch checked={labsOn} onCheckedChange={setLabsOn} aria-label="Toggle Ares Labs" />
+                </label>
+                <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+                  {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           </header>
 
-          {/* Chat */}
+          {/* Main */}
           <main className="min-h-0 flex-1">
-            <ChatInterface
-              key={active.id}
-              mode={active.mode}
-              messages={active.messages}
-              onMessagesChange={handleMessagesChange}
-            />
+            {labsOn ? (
+              <AresLabs />
+            ) : (
+              <ChatInterface
+                key={active.id}
+                mode={active.mode}
+                messages={active.messages}
+                onMessagesChange={handleMessagesChange}
+              />
+            )}
           </main>
         </div>
 
