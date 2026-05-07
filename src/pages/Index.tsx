@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, FlaskConical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ModeSelector } from "@/components/ModeSelector";
 import { AgeGateDialog } from "@/components/AgeGateDialog";
 import { ChatInterface } from "@/components/ChatInterface";
+import { AresLabs } from "@/components/AresLabs";
+import { Switch } from "@/components/ui/switch";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { CustomizeDialog } from "@/components/CustomizeDialog";
