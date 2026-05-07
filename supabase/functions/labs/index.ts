@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5.5-pro",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...turns,
