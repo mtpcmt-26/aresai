@@ -1,80 +1,80 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Loader2, RefreshCw, Code2, Eye, Download, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowUp,
+  Loader2,
+  RefreshCw,
+  Code2,
+  Eye,
+  Download,
+  Trash2,
+  Monitor,
+  Tablet,
+  Smartphone,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import {
+  LabsProject,
+  STARTER_HTML,
+  deriveProjectName,
+  loadActiveId,
+  loadProjects,
+  newProject,
+  saveActiveId,
+  saveProjects,
+} from "@/lib/labsProjects";
 
 const LABS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/labs`;
 
-const STARTER_HTML = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<script src="https://cdn.tailwindcss.com"></script>
-<title>Ares Labs</title>
-</head>
-<body class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black text-slate-100 flex items-center justify-center font-sans">
-  <div class="text-center px-6">
-    <div class="text-xs uppercase tracking-[0.3em] text-cyan-400 mb-4">Ares Labs</div>
-    <h1 class="text-4xl sm:text-5xl font-bold mb-3">Build anything. Just ask.</h1>
-    <p class="text-slate-400 max-w-md mx-auto">Type what you want on the left. The app appears here, instantly.</p>
-  </div>
-</body>
-</html>`;
+interface Props {
+  projects: LabsProject[];
+  activeId: string | null;
+  onProjectsChange: (next: LabsProject[]) => void;
+  onActiveChange: (id: string) => void;
+}
 
-type Turn = { role: "user" | "assistant"; content: string };
+type Device = "desktop" | "tablet" | "mobile";
 
-const STORAGE_HTML = "ares.labs.html.v1";
-const STORAGE_TURNS = "ares.labs.turns.v1";
+const DEVICE_DIMS: Record<Device, { w: number; h: number; label: string }> = {
+  desktop: { w: 1280, h: 800, label: "Desktop" },
+  tablet: { w: 820, h: 1180, label: "Tablet" },
+  mobile: { w: 390, h: 844, label: "Mobile" },
+};
 
-export const AresLabs = () => {
+export const AresLabs = ({ projects, activeId, onProjectsChange, onActiveChange }: Props) => {
+  const active = useMemo(
+    () => projects.find((p) => p.id === activeId) ?? projects[0],
+    [projects, activeId],
+  );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"preview" | "code">("preview");
-  const [html, setHtml] = useState<string>(() => {
-    try {
-      return localStorage.getItem(STORAGE_HTML) || STARTER_HTML;
-    } catch {
-      return STARTER_HTML;
-    }
-  });
-  const [turns, setTurns] = useState<Turn[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_TURNS);
-      return raw ? (JSON.parse(raw) as Turn[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [device, setDevice] = useState<Device>("desktop");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_HTML, html);
-    } catch {
-      /* ignore */
-    }
-  }, [html]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_TURNS, JSON.stringify(turns.slice(-30)));
-    } catch {
-      /* ignore */
-    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns]);
+  }, [active?.turns]);
+
+  const updateActive = (patch: Partial<LabsProject>) => {
+    if (!active) return;
+    onProjectsChange(
+      projects.map((p) => (p.id === active.id ? { ...p, ...patch, updatedAt: Date.now() } : p)),
+    );
+  };
 
   const send = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || !active) return;
     setInput("");
-    const nextTurns: Turn[] = [...turns, { role: "user", content: text }];
-    setTurns(nextTurns);
+    const nextTurns = [...active.turns, { role: "user" as const, content: text }];
+    const nextName =
+      active.turns.length === 0 ? deriveProjectName(nextTurns) : active.name;
+    updateActive({ turns: nextTurns, name: nextName });
     setLoading(true);
 
     try {
@@ -93,11 +93,10 @@ export const AresLabs = () => {
         },
         body: JSON.stringify({
           prompt: text,
-          currentHtml: html === STARTER_HTML ? "" : html,
-          history: turns,
+          currentHtml: active.html === STARTER_HTML ? "" : active.html,
+          history: active.turns,
         }),
       });
-
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         if (resp.status === 429) toast.error("Rate limited. Slow down.");
@@ -107,8 +106,10 @@ export const AresLabs = () => {
         return;
       }
       const data = await resp.json();
-      if (data.html) setHtml(data.html);
-      setTurns([...nextTurns, { role: "assistant", content: data.summary || "Updated." }]);
+      updateActive({
+        html: data.html || active.html,
+        turns: [...nextTurns, { role: "assistant", content: data.summary || "Updated." }],
+      });
     } catch (e) {
       console.error(e);
       toast.error("Connection error.");
@@ -125,9 +126,8 @@ export const AresLabs = () => {
   };
 
   const reload = () => {
-    if (iframeRef.current) {
-      // re-set srcdoc to force reload
-      const cur = html;
+    if (iframeRef.current && active) {
+      const cur = active.html;
       iframeRef.current.srcdoc = "";
       requestAnimationFrame(() => {
         if (iframeRef.current) iframeRef.current.srcdoc = cur;
@@ -136,39 +136,56 @@ export const AresLabs = () => {
   };
 
   const download = () => {
-    const blob = new Blob([html], { type: "text/html" });
+    if (!active) return;
+    const blob = new Blob([active.html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "ares-labs-app.html";
+    a.download = `${active.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "ares-labs"}.html`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const reset = () => {
-    setHtml(STARTER_HTML);
-    setTurns([]);
-    toast("Labs reset.");
+  const resetProject = () => {
+    if (!active) return;
+    onProjectsChange(
+      projects.map((p) =>
+        p.id === active.id
+          ? { ...p, html: STARTER_HTML, turns: [], name: "New project", updatedAt: Date.now() }
+          : p,
+      ),
+    );
+    toast("Project reset.");
   };
+
+  if (!active) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        Create a new project from the sidebar to start.
+      </div>
+    );
+  }
+
+  const dims = DEVICE_DIMS[device];
 
   return (
     <div className="grid h-full min-h-0 grid-cols-1 md:grid-cols-[minmax(320px,420px)_1fr]">
       {/* Left: chat */}
       <div className="flex min-h-0 flex-col border-r border-border bg-background">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div>
+          <div className="min-w-0">
             <div className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-cyan-500">
-              Ares Labs · GPT-5.5 Pro
+              Ares Labs · GPT-5
             </div>
-            <div className="text-xs text-muted-foreground">AI coding studio</div>
+            <div className="truncate text-xs text-muted-foreground">{active.name}</div>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={reset} title="Reset">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetProject} title="Reset project">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
 
         <div ref={scrollRef} className="scrollbar-thin flex-1 overflow-y-auto px-4 py-4">
-          {turns.length === 0 && (
+          {active.turns.length === 0 && (
             <div className="space-y-3 py-6">
               <h3 className="font-display text-xl font-bold leading-tight">
                 Build apps at superhuman speed.
@@ -194,7 +211,7 @@ export const AresLabs = () => {
             </div>
           )}
           <div className="space-y-3">
-            {turns.map((t, i) => (
+            {active.turns.map((t, i) => (
               <div key={i} className={cn("flex gap-2", t.role === "user" && "justify-end")}>
                 <div
                   className={cn(
@@ -246,7 +263,7 @@ export const AresLabs = () => {
 
       {/* Right: preview */}
       <div className="flex min-h-0 flex-col bg-muted/30">
-        <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-4 py-2">
           <div className="flex items-center gap-1 rounded-sm border border-border p-0.5">
             <button
               onClick={() => setView("preview")}
@@ -267,6 +284,31 @@ export const AresLabs = () => {
               <Code2 className="h-3 w-3" /> Code
             </button>
           </div>
+
+          {view === "preview" && (
+            <div className="flex items-center gap-1 rounded-sm border border-border p-0.5">
+              {(["desktop", "tablet", "mobile"] as Device[]).map((d) => {
+                const Icon = d === "desktop" ? Monitor : d === "tablet" ? Tablet : Smartphone;
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setDevice(d)}
+                    title={DEVICE_DIMS[d].label}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs",
+                      device === d
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                    <span className="hidden sm:inline">{DEVICE_DIMS[d].label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reload} title="Reload">
               <RefreshCw className="h-3.5 w-3.5" />
@@ -278,25 +320,93 @@ export const AresLabs = () => {
         </div>
         <div className="relative min-h-0 flex-1">
           {view === "preview" ? (
-            <iframe
-              ref={iframeRef}
-              title="Ares Labs Preview"
-              srcDoc={html}
-              sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
-              className="absolute inset-0 h-full w-full border-0 bg-white"
-            />
+            <div className="absolute inset-0 flex items-center justify-center overflow-auto p-4">
+              {device === "desktop" ? (
+                <iframe
+                  ref={iframeRef}
+                  title="Ares Labs Preview"
+                  srcDoc={active.html}
+                  sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
+                  className="h-full w-full rounded-sm border border-border bg-white"
+                />
+              ) : (
+                <div
+                  className="rounded-[28px] border-4 border-foreground/80 bg-foreground/80 p-2 shadow-2xl"
+                  style={{ width: dims.w + 16, maxWidth: "100%" }}
+                >
+                  <iframe
+                    ref={iframeRef}
+                    title="Ares Labs Preview"
+                    srcDoc={active.html}
+                    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
+                    style={{ width: dims.w, height: dims.h, maxWidth: "100%" }}
+                    className="rounded-[20px] border-0 bg-white"
+                  />
+                </div>
+              )}
+            </div>
           ) : (
             <pre className="scrollbar-thin absolute inset-0 overflow-auto bg-card p-4 text-xs leading-relaxed">
-              <code>{html}</code>
+              <code>{active.html}</code>
             </pre>
           )}
           {loading && (
             <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-2 rounded-sm border border-border bg-background/90 px-3 py-1.5 text-xs shadow">
-              <Loader2 className="h-3 w-3 animate-spin" /> Generating with GPT-5.5 Pro
+              <Loader2 className="h-3 w-3 animate-spin" /> Generating with GPT-5
             </div>
           )}
         </div>
       </div>
     </div>
   );
+};
+
+// Hook for managing labs project state at the parent level.
+export const useLabsProjects = () => {
+  const [projects, setProjects] = useState<LabsProject[]>(() => {
+    const existing = loadProjects();
+    if (existing.length) return existing;
+    const fresh = newProject();
+    return [fresh];
+  });
+  const [activeId, setActiveId] = useState<string | null>(() => {
+    const stored = loadActiveId();
+    if (stored) return stored;
+    return null;
+  });
+
+  useEffect(() => {
+    saveProjects(projects);
+    if (!activeId || !projects.find((p) => p.id === activeId)) {
+      const id = projects[0]?.id ?? null;
+      setActiveId(id);
+      if (id) saveActiveId(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects]);
+
+  useEffect(() => {
+    if (activeId) saveActiveId(activeId);
+  }, [activeId]);
+
+  const createProject = () => {
+    const p = newProject();
+    setProjects((prev) => [p, ...prev]);
+    setActiveId(p.id);
+  };
+
+  const deleteProject = (id: string) => {
+    setProjects((prev) => {
+      const remaining = prev.filter((p) => p.id !== id);
+      if (remaining.length === 0) {
+        const fresh = newProject();
+        setActiveId(fresh.id);
+        return [fresh];
+      }
+      if (id === activeId) setActiveId(remaining[0].id);
+      return remaining;
+    });
+  };
+
+  return { projects, activeId, setProjects, setActiveId, createProject, deleteProject };
 };
