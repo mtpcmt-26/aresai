@@ -60,6 +60,8 @@ const Index = () => {
     }
   }, [labsOn]);
 
+  const labs = useLabsProjects();
+
   const dark = settings.theme !== "light";
 
   const active = useMemo(
@@ -115,15 +117,25 @@ const Index = () => {
   return (
     <SidebarProvider>
       <div className="ares-shell flex h-screen w-full bg-background font-body text-foreground">
-        <AppSidebar
-          conversations={conversations}
-          activeId={active.id}
-          onSelect={setActiveId}
-          onNew={handleNew}
-          onDelete={handleDelete}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onOpenAccount={() => setAccountOpen(true)}
-        />
+        {labsOn ? (
+          <LabsSidebar
+            projects={labs.projects}
+            activeId={labs.activeId}
+            onSelect={labs.setActiveId}
+            onNew={labs.createProject}
+            onDelete={labs.deleteProject}
+          />
+        ) : (
+          <AppSidebar
+            conversations={conversations}
+            activeId={active.id}
+            onSelect={setActiveId}
+            onNew={handleNew}
+            onDelete={handleDelete}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenAccount={() => setAccountOpen(true)}
+          />
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Header */}
@@ -179,7 +191,12 @@ const Index = () => {
           {/* Main */}
           <main className="min-h-0 flex-1">
             {labsOn ? (
-              <AresLabs />
+              <AresLabs
+                projects={labs.projects}
+                activeId={labs.activeId}
+                onProjectsChange={labs.setProjects}
+                onActiveChange={labs.setActiveId}
+              />
             ) : (
               <ChatInterface
                 key={active.id}
