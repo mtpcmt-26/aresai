@@ -5,6 +5,7 @@ export interface Msg {
   role: "user" | "assistant";
   content: string;
   images?: string[]; // data URLs or http URLs
+  video?: string; // url to mp4
 }
 
 export const ChatMessage = ({ msg, accentVar }: { msg: Msg; accentVar?: string }) => {
@@ -27,6 +28,16 @@ export const ChatMessage = ({ msg, accentVar }: { msg: Msg; accentVar?: string }
             : "border border-border bg-card text-card-foreground",
         )}
       >
+        {msg.video && (
+          <div className="mb-2">
+            <video
+              src={msg.video}
+              controls
+              playsInline
+              className="max-h-80 w-full rounded-sm border border-border/50 bg-black"
+            />
+          </div>
+        )}
         {msg.images && msg.images.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
             {msg.images.map((src, i) => (
