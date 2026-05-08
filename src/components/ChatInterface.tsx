@@ -97,6 +97,73 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
         return;
       }
 
+      // ---- Quiz intent (auto Quiz Mode) ----
+      if (!wasImageMode && !userImages.length) {
+        const qi = detectQuizIntent(text);
+        if (qi.isQuiz) {
+          // Use prior assistant content as study context if any
+          const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+          const ctx = lastAssistant?.content?.slice(0, 3000);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `Spinning up a ${qi.difficulty} quiz on **${qi.topic}** — ${qi.count} questions.`,
+            },
+          ]);
+          setQuiz({ topic: qi.topic, count: qi.count, difficulty: qi.difficulty });
+          // Stash context on the quiz request via closure: extend setQuiz with context
+          (window as unknown as { __ares_quiz_ctx?: string }).__ares_quiz_ctx = ctx;
+          setLoading(false);
+          return;
+        }
+
+        // ---- Video intent (Replicate text-to-video) ----
+        const vi = detectVideoIntent(text);
+        if (vi.isVideo) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `Generating a video: *${vi.prompt}* — this takes ~30–60s.`,
+            },
+          ]);
+          try {
+            const vresp = await fetch(VIDEO_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({ prompt: vi.prompt }),
+            });
+            if (!vresp.ok) {
+              const err = await vresp.json().catch(() => ({}));
+              setMessages((prev) => [
+                ...prev,
+                { role: "assistant", content: `Video generation failed: ${err.error || vresp.statusText}` },
+              ]);
+            } else {
+              const vdata = await vresp.json();
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: `Here's your video.`,
+                  video: vdata.videoUrl,
+                },
+              ]);
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error("Video generation error.");
+          }
+          setLoading(false);
+          return;
+        }
+      }
+
       // ---- Image generation path ----
       if (wasImageMode) {
         const resp = await fetch(CHAT_URL, {
