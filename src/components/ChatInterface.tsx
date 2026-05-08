@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Trash2, Paperclip, ImagePlus, X } from "lucide-react";
+import { ArrowUp, Trash2, Paperclip, ImagePlus, X, Video } from "lucide-react";
 import { ChatMessage, Msg } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ModeId, getMode } from "@/lib/modes";
 import { loadModelId, saveModelId } from "@/lib/models";
 import { ModelSelector } from "./ModelSelector";
+import { QuizMode } from "./QuizMode";
+import { detectQuizIntent, detectVideoIntent } from "@/lib/intent";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+
+const VIDEO_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/video-gen`;
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 const MAX_IMAGES = 4;
@@ -36,6 +40,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
   const [model, setModel] = useState<string>(() => loadModelId());
   const [attachments, setAttachments] = useState<string[]>([]);
   const [imageMode, setImageMode] = useState(false);
+  const [quiz, setQuiz] = useState<{ topic: string; count: number; difficulty: "easy" | "medium" | "hard" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -90,6 +95,73 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
         setMessages(() => next);
         setLoading(false);
         return;
+      }
+
+      // ---- Quiz intent (auto Quiz Mode) ----
+      if (!wasImageMode && !userImages.length) {
+        const qi = detectQuizIntent(text);
+        if (qi.isQuiz) {
+          // Use prior assistant content as study context if any
+          const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+          const ctx = lastAssistant?.content?.slice(0, 3000);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `Spinning up a ${qi.difficulty} quiz on **${qi.topic}** — ${qi.count} questions.`,
+            },
+          ]);
+          setQuiz({ topic: qi.topic, count: qi.count, difficulty: qi.difficulty });
+          // Stash context on the quiz request via closure: extend setQuiz with context
+          (window as unknown as { __ares_quiz_ctx?: string }).__ares_quiz_ctx = ctx;
+          setLoading(false);
+          return;
+        }
+
+        // ---- Video intent (Replicate text-to-video) ----
+        const vi = detectVideoIntent(text);
+        if (vi.isVideo) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `Generating a video: *${vi.prompt}* — this takes ~30–60s.`,
+            },
+          ]);
+          try {
+            const vresp = await fetch(VIDEO_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({ prompt: vi.prompt }),
+            });
+            if (!vresp.ok) {
+              const err = await vresp.json().catch(() => ({}));
+              setMessages((prev) => [
+                ...prev,
+                { role: "assistant", content: `Video generation failed: ${err.error || vresp.statusText}` },
+              ]);
+            } else {
+              const vdata = await vresp.json();
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: `Here's your video.`,
+                  video: vdata.videoUrl,
+                },
+              ]);
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error("Video generation error.");
+          }
+          setLoading(false);
+          return;
+        }
       }
 
       // ---- Image generation path ----
@@ -363,6 +435,21 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
           </p>
         </div>
       </div>
+      {quiz && (
+        <QuizMode
+          open
+          topic={quiz.topic}
+          count={quiz.count}
+          difficulty={quiz.difficulty}
+          context={(window as unknown as { __ares_quiz_ctx?: string }).__ares_quiz_ctx}
+          onClose={(summary) => {
+            setQuiz(null);
+            if (summary) {
+              setMessages((prev) => [...prev, { role: "assistant", content: summary }]);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

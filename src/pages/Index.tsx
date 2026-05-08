@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { ModeSelector } from "@/components/ModeSelector";
 import { AgeGateDialog } from "@/components/AgeGateDialog";
 import { ChatInterface } from "@/components/ChatInterface";
-import { AresLabs } from "@/components/AresLabs";
+import { AresLabs, useLabsProjects } from "@/components/AresLabs";
+import { LabsSidebar } from "@/components/LabsSidebar";
 import { Switch } from "@/components/ui/switch";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SettingsDialog } from "@/components/SettingsDialog";
@@ -58,6 +59,8 @@ const Index = () => {
       /* ignore */
     }
   }, [labsOn]);
+
+  const labs = useLabsProjects();
 
   const dark = settings.theme !== "light";
 
@@ -114,15 +117,25 @@ const Index = () => {
   return (
     <SidebarProvider>
       <div className="ares-shell flex h-screen w-full bg-background font-body text-foreground">
-        <AppSidebar
-          conversations={conversations}
-          activeId={active.id}
-          onSelect={setActiveId}
-          onNew={handleNew}
-          onDelete={handleDelete}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onOpenAccount={() => setAccountOpen(true)}
-        />
+        {labsOn ? (
+          <LabsSidebar
+            projects={labs.projects}
+            activeId={labs.activeId}
+            onSelect={labs.setActiveId}
+            onNew={labs.createProject}
+            onDelete={labs.deleteProject}
+          />
+        ) : (
+          <AppSidebar
+            conversations={conversations}
+            activeId={active.id}
+            onSelect={setActiveId}
+            onNew={handleNew}
+            onDelete={handleDelete}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenAccount={() => setAccountOpen(true)}
+          />
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Header */}
@@ -178,7 +191,12 @@ const Index = () => {
           {/* Main */}
           <main className="min-h-0 flex-1">
             {labsOn ? (
-              <AresLabs />
+              <AresLabs
+                projects={labs.projects}
+                activeId={labs.activeId}
+                onProjectsChange={labs.setProjects}
+                onActiveChange={labs.setActiveId}
+              />
             ) : (
               <ChatInterface
                 key={active.id}
