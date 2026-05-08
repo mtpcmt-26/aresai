@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Trash2, Paperclip, ImagePlus, X } from "lucide-react";
+import { ArrowUp, Trash2, Paperclip, ImagePlus, X, Video } from "lucide-react";
 import { ChatMessage, Msg } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ModeId, getMode } from "@/lib/modes";
 import { loadModelId, saveModelId } from "@/lib/models";
 import { ModelSelector } from "./ModelSelector";
+import { QuizMode } from "./QuizMode";
+import { detectQuizIntent, detectVideoIntent } from "@/lib/intent";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+
+const VIDEO_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/video-gen`;
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 const MAX_IMAGES = 4;
@@ -36,6 +40,7 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
   const [model, setModel] = useState<string>(() => loadModelId());
   const [attachments, setAttachments] = useState<string[]>([]);
   const [imageMode, setImageMode] = useState(false);
+  const [quiz, setQuiz] = useState<{ topic: string; count: number; difficulty: "easy" | "medium" | "hard" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
