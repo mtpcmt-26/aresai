@@ -435,6 +435,21 @@ export const ChatInterface = ({ mode, messages, onMessagesChange }: Props) => {
           </p>
         </div>
       </div>
+      {quiz && (
+        <QuizMode
+          open
+          topic={quiz.topic}
+          count={quiz.count}
+          difficulty={quiz.difficulty}
+          context={(window as unknown as { __ares_quiz_ctx?: string }).__ares_quiz_ctx}
+          onClose={(summary) => {
+            setQuiz(null);
+            if (summary) {
+              setMessages((prev) => [...prev, { role: "assistant", content: summary }]);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
