@@ -6,9 +6,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useState } from "react";
+import { ApiKeysDialog } from "@/components/ApiKeysDialog";
 
 interface Props {
   open: boolean;
@@ -17,6 +19,8 @@ interface Props {
 
 export const AccountDialog = ({ open, onOpenChange }: Props) => {
   const { user, signOut } = useAuth();
+  const [keysOpen, setKeysOpen] = useState(false);
+
 
   const handleSignOut = async () => {
     await signOut();
