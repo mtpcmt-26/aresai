@@ -405,11 +405,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    const today = new Date().toLocaleDateString("en-US", {
+    const today = new Date().toLocaleString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
       timeZone: "UTC",
     });
 
@@ -437,7 +440,7 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `${MODE_PROMPTS[modeKey]}
 
-CURRENT DATE: ${today} (UTC).
+CURRENT DATE AND TIME: ${today} (UTC — 24-hour clock).
 
 ${WORLD_CONTEXT}
 
