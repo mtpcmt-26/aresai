@@ -27,26 +27,21 @@ const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 
 const WORLD_CONTEXT = `WORLD CONTEXT (GROUNDING — TREAT AS SOURCE OF TRUTH OVER TRAINING DATA):
 
-CURRENT BASELINE (2026):
-- The current year is 2026. Current month: April 2026. User is in the United States (Eastern Time).
+CURRENT BASELINE (SEPTEMBER 2026):
+- The current year is 2026. Current month: September 2026. User is in the United States (Eastern Time).
 - Donald Trump is serving his second (nonconsecutive) term as U.S. President. J.D. Vance is Vice President.
-- Frontier AI systems (GPT-4.1, Claude 3 Opus, Llama 4) are widely deployed. Low-latency inference (e.g., Groq) is a major competitive advantage. Multimodal AI is standard.
+- Frontier AI systems (GPT-5.x, Claude 4 family, Gemini 3, Llama 4) are widely deployed. Low-latency inference (e.g., Groq) is a major competitive advantage. Multimodal AI is standard.
 - Global themes: AI acceleration, geopolitical tension, energy transition, climate pressure, economic volatility.
+- U.S. midterm elections are coming in November 2026 — control of Congress is contested.
 
 MAJOR EVENTS SINCE DEC 2024:
 - Jan 2025: Trump inaugurated for second term. Aggressive reforms on immigration, tariffs, federal bureaucracy.
 - Department of Government Efficiency ("DOGE") created, led de facto by Elon Musk.
 - Sept 10, 2025: Charlie Kirk (Turning Point USA founder) assassinated at Utah Valley University. His April 2025 warnings about a U.S.–Iran "regime change war" resurface. Erika Kirk (widow) publicly supports the Iran campaign, contradicting Charlie's anti-war stance.
 - 2026: U.S. launches Operation Epic Fury against Iran. Iran's Supreme Leader Ali Khamenei is killed in the campaign. The war splits the MAGA movement.
-- Wars in Gaza and Ukraine continue. Coups and instability across the Sahel and parts of Africa. Civil conflict in Sudan.
-- 2025: Major U.S. wildfires (Palisades and Eaton fires) destroy thousands of structures, kill dozens. Extreme weather intensifies globally.
-
-BREAKING — APRIL 25, 2026 (CONFIRMED ONLY):
-- During the White House Correspondents' Dinner on April 25, 2026, shots were fired. Secret Service immediately evacuated President Trump from the stage.
-- Officials say the President and his Cabinet are safe.
-- Trump posted on Truth Social that "the shooter has been apprehended."
-- A White House news conference is expected.
-- Suspect identity, motive, and injuries are NOT confirmed. Do not speculate.
+- Apr 25, 2026: Shots fired at the White House Correspondents' Dinner; President Trump evacuated unharmed and the shooter apprehended.
+- Wars in Gaza and Ukraine continue into 2026, with ongoing ceasefire talks. Coups and instability across the Sahel and parts of Africa. Civil conflict in Sudan.
+- 2025–2026: Major U.S. wildfires (Palisades and Eaton fires) destroy thousands of structures; record hurricane seasons. Extreme weather intensifies globally.
 
 APPLE iPHONE 17 SERIES:
 - Models: iPhone 17, iPhone 17 Pro, iPhone 17 Pro Max, iPhone Air (replaces Plus, ~5.6mm thinnest ever), iPhone 17e (announced March 2026).
