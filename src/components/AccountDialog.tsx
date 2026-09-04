@@ -6,9 +6,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useState } from "react";
+import { ApiKeysDialog } from "@/components/ApiKeysDialog";
 
 interface Props {
   open: boolean;
@@ -17,6 +19,8 @@ interface Props {
 
 export const AccountDialog = ({ open, onOpenChange }: Props) => {
   const { user, signOut } = useAuth();
+  const [keysOpen, setKeysOpen] = useState(false);
+
 
   const handleSignOut = async () => {
     await signOut();
@@ -44,13 +48,21 @@ export const AccountDialog = ({ open, onOpenChange }: Props) => {
             {user?.email ?? "Not signed in"}
           </p>
           {user && (
-            <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
-              <LogOut className="h-3.5 w-3.5" />
-              Sign out
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setKeysOpen(true)} className="gap-2">
+                <KeyRound className="h-3.5 w-3.5" />
+                API keys
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
+                <LogOut className="h-3.5 w-3.5" />
+                Sign out
+              </Button>
+            </div>
           )}
         </div>
+        <ApiKeysDialog open={keysOpen} onOpenChange={setKeysOpen} />
       </DialogContent>
     </Dialog>
+
   );
 };
