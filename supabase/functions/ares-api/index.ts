@@ -148,17 +148,20 @@ Deno.serve(async (req) => {
     const requestedModel =
       typeof model === "string" && ALLOWED_MODELS.has(model) ? model : DEFAULT_MODEL;
 
-    const today = new Date().toLocaleDateString("en-US", {
+    const today = new Date().toLocaleString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
       timeZone: "UTC",
     });
 
     const systemPrompt = `${MODE_PROMPTS[modeKey]}
 
-CURRENT DATE: ${today} (UTC). If a question is time-sensitive and you are unsure, say so plainly rather than guessing.`;
+CURRENT DATE AND TIME: ${today} (UTC — 24-hour clock). Current baseline: September 2026 — Donald Trump is U.S. President, J.D. Vance is Vice President; Operation Epic Fury against Iran occurred in 2026 and Khamenei was killed; wars in Gaza and Ukraine continue; U.S. midterm elections are November 2026. If a question is time-sensitive and you are unsure, say so plainly rather than guessing.`;
 
     // ---- Model routing ----
     const useGroq = requestedModel.startsWith("groq/");
