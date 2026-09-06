@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { CustomizeDialog } from "@/components/CustomizeDialog";
 import { AccountDialog } from "@/components/AccountDialog";
+import { HelpDialog } from "@/components/HelpDialog";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { ModeId } from "@/lib/modes";
 import { Msg } from "@/components/ChatMessage";
@@ -45,6 +46,7 @@ const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [labsOn, setLabsOn] = useState<boolean>(() => {
     try {
       return localStorage.getItem("ares.labs.on.v1") === "1";
@@ -136,6 +138,7 @@ const Index = () => {
             onDelete={handleDelete}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenAccount={() => setAccountOpen(true)}
+            onOpenHelp={() => setHelpOpen(true)}
           />
         )}
 
@@ -238,6 +241,8 @@ const Index = () => {
         <CustomizeDialog open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         <AccountDialog open={accountOpen} onOpenChange={setAccountOpen} />
+
+        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
       </div>
     </SidebarProvider>
   );
