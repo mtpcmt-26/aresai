@@ -117,6 +117,7 @@ const Index = () => {
 
   return (
     <SidebarProvider>
+      <AnnouncementBanner />
       <div className="ares-shell flex h-screen w-full bg-background font-body text-foreground">
         {labsOn ? (
           <LabsSidebar
