@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { CustomizeDialog } from "@/components/CustomizeDialog";
 import { AccountDialog } from "@/components/AccountDialog";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { ModeId } from "@/lib/modes";
 import { Msg } from "@/components/ChatMessage";
 import { deriveTitle } from "@/lib/conversations";
