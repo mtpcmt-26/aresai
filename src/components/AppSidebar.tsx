@@ -1,4 +1,4 @@
-import { MessageSquare, Plus, Settings, Trash2, User } from "lucide-react";
+import { MessageSquare, Plus, Settings, Trash2, User, HelpCircle } from "lucide-react";
 import { Conversation } from "@/lib/conversations";
 import {
   Sidebar,
@@ -25,6 +25,7 @@ interface Props {
   onDelete: (id: string) => void;
   onOpenSettings: () => void;
   onOpenAccount: () => void;
+  onOpenHelp: () => void;
 }
 
 export const AppSidebar = ({
@@ -35,6 +36,7 @@ export const AppSidebar = ({
   onDelete,
   onOpenSettings,
   onOpenAccount,
+  onOpenHelp,
 }: Props) => {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -141,6 +143,12 @@ export const AppSidebar = ({
             <SidebarMenuButton onClick={onOpenSettings} className="rounded-sm">
               <Settings className="h-4 w-4" />
               {!collapsed && <span>Settings</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={onOpenHelp} className="rounded-sm">
+              <HelpCircle className="h-4 w-4" />
+              {!collapsed && <span>Help</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
