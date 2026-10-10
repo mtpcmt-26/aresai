@@ -37,10 +37,10 @@ Deno.serve(async (req) => {
       const r = await fetch("https://api.firecrawl.dev/v2/search", {
         method: "POST",
         headers: { Authorization: `Bearer ${FC}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ query: TOPICS[topic], limit: 12, sources: [{ type: "news" }], tbs: "qdr:d" }),
+        body: JSON.stringify({ query: TOPICS[topic], limit: 12, sources: ["news", "web"], tbs: "qdr:d" }),
       });
       if (!r.ok) { console.error("fc", r.status, await r.text()); return []; }
-      const d = await r.json();
+      const d = await r.json(); console.log("fc keys", JSON.stringify(d).slice(0, 600));
       return [...(d?.data?.news ?? []), ...(d?.data?.web ?? [])]
         .filter((x: any) => x?.url)
         .map((x: any) => ({ url: x.url, title: x.title, snippet: x.snippet ?? x.description ?? "", date: x.date ?? null, image: x.imageUrl ?? null }));
