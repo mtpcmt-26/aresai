@@ -1,3 +1,6 @@
 project_id = "kecphjnhrswsgjmlmogr"
 [functions.ares-api]
 verify_jwt = false
+
+[functions.discover]
+verify_jwt = false

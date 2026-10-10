@@ -7,6 +7,9 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { UserSettingsProvider } from "@/hooks/useUserSettings";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
+import Search from "./pages/Search.tsx";
+import Discover from "./pages/Discover.tsx";
+import Share from "./pages/Share.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -22,6 +25,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/discover" element={<Discover />} />
+              <Route path="/share/:id" element={<Share />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

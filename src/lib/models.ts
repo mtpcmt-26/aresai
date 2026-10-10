@@ -68,6 +68,30 @@ export const MODELS: ModelOption[] = [
     skillLabel: "Lightweight",
     description: "Cheapest, snappiest. Good for quick Q&A.",
   },
+  {
+    id: "groq/openai/gpt-oss-120b", label: "GPT-OSS 120B (Groq)", provider: "groq",
+    skill: "reasoning", skillLabel: "Fast reasoning", description: "Open-weight reasoning at Groq speed.",
+  },
+  {
+    id: "groq/openai/gpt-oss-20b", label: "GPT-OSS 20B (Groq)", provider: "groq",
+    skill: "fast", skillLabel: "Ultra-fast", description: "Smaller open reasoning model. Very quick.",
+  },
+  {
+    id: "groq/moonshotai/kimi-k2-instruct", label: "Kimi K2 (Groq)", provider: "groq",
+    skill: "long-context", skillLabel: "Agentic", description: "Strong at coding and multi-step tasks.",
+  },
+  {
+    id: "groq/meta-llama/llama-4-scout-17b-16e-instruct", label: "Llama 4 Scout (Groq)", provider: "groq",
+    skill: "balanced", skillLabel: "Balanced", description: "Meta's Llama 4, fast and capable.",
+  },
+  {
+    id: "groq/qwen/qwen3-32b", label: "Qwen3 32B (Groq)", provider: "groq",
+    skill: "reasoning", skillLabel: "Reasoning", description: "Great at math and logic.",
+  },
+  {
+    id: "groq/llama-3.1-8b-instant", label: "Llama 3.1 8B (Groq)", provider: "groq",
+    skill: "lightweight", skillLabel: "Instant", description: "Tiny and instant. Simple questions.",
+  },
 ];
 
 export const DEFAULT_MODEL_ID = MODELS[0].id;

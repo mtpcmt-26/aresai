@@ -1,4 +1,5 @@
-import { MessageSquare, Plus, Settings, Trash2, User, HelpCircle } from "lucide-react";
+import { MessageSquare, Plus, Settings, Trash2, User, HelpCircle, Search as SearchIcon, Compass } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Conversation } from "@/lib/conversations";
 import {
   Sidebar,
@@ -133,6 +134,18 @@ export const AppSidebar = ({
 
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={() => navigate("/search")} className="rounded-sm">
+              <SearchIcon className="h-4 w-4" />
+              {!collapsed && <span>Search & Deep Research</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={() => navigate("/discover")} className="rounded-sm">
+              <Compass className="h-4 w-4" />
+              {!collapsed && <span>Discover</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={onOpenAccount} className="rounded-sm">
               <User className="h-4 w-4" />

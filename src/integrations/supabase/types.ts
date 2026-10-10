@@ -110,6 +110,33 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_answers: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          query: string
+          sources: Json
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          query: string
+          sources?: Json
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          query?: string
+          sources?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           accent_color: string | null
