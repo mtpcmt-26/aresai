@@ -41,6 +41,7 @@ export const AppSidebar = ({
 }: Props) => {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const navigate = useNavigate();
 
   const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
 
