@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ query: TOPICS[topic], limit: 12, sources: ["news", "web"], tbs: "qdr:d" }),
       });
       if (!r.ok) { console.error("fc", r.status, await r.text()); return []; }
-      const d = await r.json(); console.log("fc keys", JSON.stringify(d).slice(0, 600));
+      const d = await r.json();
       return [...(d?.data?.news ?? []), ...(d?.data?.web ?? [])]
         .filter((x: any) => x?.url)
         .map((x: any) => ({ url: x.url, title: x.title, snippet: x.snippet ?? x.description ?? "", date: x.date ?? null, image: x.imageUrl ?? null }));

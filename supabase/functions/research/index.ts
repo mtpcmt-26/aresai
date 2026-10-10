@@ -30,7 +30,7 @@ function json(body: unknown, status: number) {
 async function firecrawlSearch(query: string, key: string, focus: string, limit: number, scrape: boolean): Promise<Source[]> {
   try {
     const body: Record<string, unknown> = { query: query + (FOCUS_SUFFIX[focus] ?? ""), limit };
-    if (focus === "news") { body.sources = [{ type: "news" }]; body.tbs = "qdr:w"; }
+    if (focus === "news") { body.sources = ["news", "web"]; body.tbs = "qdr:w"; }
     if (scrape) body.scrapeOptions = { formats: ["markdown"], onlyMainContent: true };
     const res = await fetch("https://api.firecrawl.dev/v2/search", {
       method: "POST",

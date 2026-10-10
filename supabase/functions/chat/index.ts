@@ -22,6 +22,12 @@ const ALLOWED_MODELS = new Set<string>([
   "openai/gpt-5",
   "openai/gpt-5.2",
   "groq/llama-3.3-70b-versatile",
+  "groq/openai/gpt-oss-120b",
+  "groq/openai/gpt-oss-20b",
+  "groq/llama-3.1-8b-instant",
+  "groq/meta-llama/llama-4-scout-17b-16e-instruct",
+  "groq/moonshotai/kimi-k2-instruct",
+  "groq/qwen/qwen3-32b",
 ]);
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 
