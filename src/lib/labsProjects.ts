@@ -10,6 +10,7 @@ export interface LabsProject {
   turns: LabsTurn[];
   createdAt: number;
   updatedAt: number;
+  model?: string;
 }
 
 export const STARTER_HTML = `<!doctype html>

@@ -1,9 +1,5 @@
-// Discover feed: live news via Firecrawl + market snapshot via Yahoo Finance.
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { verifiedSearch } from "../_shared/webSearch.ts";
 const TOPICS: Record<string, string> = {
   top: "top news today",
   tech: "technology AI news today",
@@ -31,21 +27,14 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const topic = typeof body?.topic === "string" && TOPICS[body.topic] ? body.topic : "top";
   const FC = Deno.env.get("FIRECRAWL_API_KEY");
+  let newsError: string | null = null;
   const [news, markets] = await Promise.all([
     (async () => {
       if (!FC) return [];
-      const r = await fetch("https://api.firecrawl.dev/v2/search", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${FC}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ query: TOPICS[topic], limit: 12, sources: ["news", "web"], tbs: "qdr:d" }),
-      });
-      if (!r.ok) { console.error("fc", r.status, await r.text()); return []; }
-      const d = await r.json();
-      return [...(d?.data?.news ?? []), ...(d?.data?.web ?? [])]
-        .filter((x: any) => x?.url)
-        .map((x: any) => ({ url: x.url, title: x.title, snippet: x.snippet ?? x.description ?? "", date: x.date ?? null, image: x.imageUrl ?? null }));
-    })(),
+      const sources = await verifiedSearch(TOPICS[topic], FC, 'news', 12, false);
+      return sources.map(x => ({url:x.url,title:x.title,snippet:x.description,date:x.date??null,image:x.image??null}));
+    })().catch(e => { newsError=e instanceof Error?e.message:"News unavailable";return []; }),
     Promise.all(TICKERS.map(quote)).then((a) => a.filter(Boolean)),
   ]);
-  return new Response(JSON.stringify({ topic, news, markets }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ topic, news, markets, newsError }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
