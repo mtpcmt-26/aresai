@@ -47,7 +47,7 @@ export const FinanceCard = ({ d }: { d: FinanceData }) => {
         <span>52W low <b className="text-foreground">{fmt(d.fiftyTwoWeekLow)}</b></span>
         <span>52W high <b className="text-foreground">{fmt(d.fiftyTwoWeekHigh)}</b></span>
       </div>
-      <div className="mt-2 text-[10px] text-muted-foreground">Data: Yahoo Finance</div>
+      <div className="mt-2 text-[10px] text-muted-foreground">by apex · Data: Yahoo Finance</div>
     </div>
   );
 };

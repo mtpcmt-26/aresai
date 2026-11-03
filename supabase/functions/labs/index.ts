@@ -1,154 +1,73 @@
-// Ares Labs — generates/edits a self-contained single-file HTML app.
-// Model: openai/gpt-5.5-pro via Lovable AI Gateway. Returns { html, summary }.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-const MAX_PROMPT = 8000;
-const MAX_HTML_IN = 200_000;
-const MAX_TURNS = 30;
-
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { z } from 'npm:zod@3.25.76';
+import { GatewayError } from 'npm:@lovable.dev/ai-gateway@0.1.11';
+import { completion, TextMessage } from '../_shared/ai.ts';
+import { isCodingModel } from '../_shared/modelCatalog.ts';
+const schema = z.object({ jobId: z.string().uuid(), projectId: z.string().uuid(), prompt: z.string().trim().min(1).max(8000), model: z.string().refine(isCodingModel) });
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {status, headers: {...corsHeaders, 'Content-Type':'application/json'}});
 const SYSTEM_PROMPT = `You are Ares Labs — a senior staff engineer that builds and modifies web apps as a SINGLE self-contained HTML document.
 
 HARD RULES:
-- Output ONE complete HTML document via the \`emit_app\` tool. Never reply in plain text.
+- Return JSON with exactly two string fields: html (complete HTML) and summary.
 - The HTML must include <!doctype html>, <html>, <head>, <body>, all CSS in <style>, all JS in <script>.
 - Use Tailwind via the CDN script: <script src="https://cdn.tailwindcss.com"></script>.
 - Prefer vanilla JS or React via esm.sh (e.g. import React from "https://esm.sh/react@18") in a <script type="module">.
 - The app MUST run inside an <iframe> with no network/back-end. No fetch to private APIs. No localStorage requirement.
 - Modern, clean, production-ready UI. Responsive. Accessible. Smooth interactions.
 - When the user asks for a CHANGE, modify the prior HTML — keep what works, change what they asked for.
-- Keep the document under ~120KB. No giant base64 images. Use SVG or unsplash.com URLs sparingly.
+- Keep the document under ~120KB. No giant base64 images. Use inline SVG for graphics; do not hotlink stock images.
 - The \`summary\` field is one short sentence describing what changed. No filler.
 
 If the user request is ambiguous, make a confident, tasteful choice and ship it. No clarifying questions.`;
 
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  try {
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    if (!token) return jsonResponse({ error: "Unauthorized" }, 401);
-
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-    const { data: userData, error: userErr } = await supabaseAuth.auth.getUser(token);
-    if (userErr || !userData?.user) return jsonResponse({ error: "Unauthorized" }, 401);
-
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") return jsonResponse({ error: "Invalid body" }, 400);
-
-    const { prompt, currentHtml, history } = body as {
-      prompt?: unknown;
-      currentHtml?: unknown;
-      history?: unknown;
-    };
-
-    if (typeof prompt !== "string" || !prompt.trim()) {
-      return jsonResponse({ error: "prompt required" }, 400);
-    }
-    if (prompt.length > MAX_PROMPT) return jsonResponse({ error: "prompt too long" }, 400);
-
-    const prior = typeof currentHtml === "string" && currentHtml.length <= MAX_HTML_IN
-      ? currentHtml
-      : "";
-
-    const turns: Array<{ role: "user" | "assistant"; content: string }> = [];
-    if (Array.isArray(history)) {
-      for (const t of (history as unknown[]).slice(-MAX_TURNS)) {
-        if (!t || typeof t !== "object") continue;
-        const tt = t as { role?: unknown; content?: unknown };
-        if ((tt.role === "user" || tt.role === "assistant") && typeof tt.content === "string") {
-          turns.push({ role: tt.role, content: tt.content.slice(0, 2000) });
-        }
-      }
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return jsonResponse({ error: "Service unavailable" }, 500);
-
-    const userMessage = prior
-      ? `CURRENT APP HTML (modify this):\n\`\`\`html\n${prior}\n\`\`\`\n\nUSER REQUEST:\n${prompt}`
-      : `USER REQUEST (build from scratch):\n${prompt}`;
-
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...turns,
-          { role: "user", content: userMessage },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "emit_app",
-              description: "Emit the complete updated HTML app and a one-sentence change summary.",
-              parameters: {
-                type: "object",
-                properties: {
-                  html: { type: "string", description: "Complete self-contained HTML document." },
-                  summary: { type: "string", description: "One short sentence on what changed." },
-                },
-                required: ["html", "summary"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "emit_app" } },
-      }),
-    });
-
-    if (!res.ok) {
-      if (res.status === 429) return jsonResponse({ error: "Rate limited. Slow down." }, 429);
-      if (res.status === 402) return jsonResponse({ error: "AI credits exhausted." }, 402);
-      const t = await res.text();
-      console.error("labs gateway error:", res.status, t);
-      return jsonResponse({ error: "AI gateway error" }, 500);
-    }
-
-    const data = await res.json();
-    const call = data?.choices?.[0]?.message?.tool_calls?.[0];
-    const argsStr = call?.function?.arguments;
-    if (typeof argsStr !== "string") {
-      console.error("labs: no tool call", JSON.stringify(data).slice(0, 800));
-      return jsonResponse({ error: "Model did not emit an app" }, 500);
-    }
-    let parsed: { html?: unknown; summary?: unknown };
-    try {
-      parsed = JSON.parse(argsStr);
-    } catch {
-      return jsonResponse({ error: "Invalid model output" }, 500);
-    }
-    const html = typeof parsed.html === "string" ? parsed.html : "";
-    const summary = typeof parsed.summary === "string" ? parsed.summary : "Updated.";
-    if (!html) return jsonResponse({ error: "Empty app" }, 500);
-
-    return jsonResponse({ html, summary }, 200);
-  } catch (e) {
-    console.error("labs error:", e);
-    return jsonResponse({ error: "Internal error" }, 500);
-  }
+Deno.serve(async req => {
+ if(req.method === 'OPTIONS') return new Response(null,{headers:corsHeaders});
+ try {
+  const token=(req.headers.get('Authorization')??'').replace(/^Bearer /,'');
+  const url=Deno.env.get('SUPABASE_URL'); const anon=Deno.env.get('SUPABASE_ANON_KEY'); const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if(!url||!anon||!service) return json({error:'Labs service unavailable'},503);
+  const auth=createClient(url,anon); const {data:u}=await auth.auth.getUser(token);
+  if(!u.user) return json({error:'Please sign in'},401);
+  const parsed=schema.safeParse(await req.json()); if(!parsed.success) return json({error:'Invalid Labs request'},400);
+  const {jobId,projectId,prompt,model}=parsed.data; const db=createClient(url,service);
+  const {data:project}=await db.from('labs_projects').select('*').eq('id',projectId).eq('user_id',u.user.id).single();
+  if(!project) return json({error:'Project not found'},404);
+  const {data:existing}=await db.from('labs_jobs').select('id,status').eq('id',jobId).eq('user_id',u.user.id).maybeSingle();
+  if(existing) return json({job:existing},202);
+  // Expired executions are never replayed: their inference outcome may be unknown.
+  await db.from('labs_jobs').update({status:'failed',error:'Build interrupted. Check the project before starting a new request.'}).eq('project_id',projectId).eq('status','running').lt('lease_until',new Date().toISOString());
+  const {data:job,error}=await db.from('labs_jobs').insert({id:jobId,project_id:projectId,user_id:u.user.id,prompt,model,status:'running'}).select().single();
+  if(error) return json({error:'This project already has a build running.'},409);
+  const work=async()=>{
+   try {
+    const {data:state}=await db.from('labs_jobs').select('status').eq('id',jobId).single();
+    if(state?.status!=='running') return;
+    const history=z.array(z.object({role:z.enum(['user','assistant']),content:z.string()})).safeParse(project.turns);
+    const turns=history.success?history.data.slice(-30):[];
+    const messages:TextMessage[]=[{role:'system',content:SYSTEM_PROMPT},...turns,{role:'user',content:`CURRENT HTML:\n${project.html.slice(0,200000)}\nREQUEST:\n${prompt}\nReturn JSON {"html":"...","summary":"..."}.`}];
+    let content='';
+    if(model.startsWith('groq/')) {
+     const key=Deno.env.get('GROQ_API_KEY'); if(!key) throw new Error('Groq is not configured');
+     const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:model.slice(5),messages,response_format:{type:'json_object'}})});
+     if(!res.ok){const details=await res.text();console.error('Labs Groq',res.status,details);const failure=Object.assign(new Error(`Groq request failed [${res.status}]`),{status:res.status});throw failure;}
+     content=(await res.json()).choices?.[0]?.message?.content??'';
+    } else { const result=await completion(model,messages); content=result.choices?.[0]?.message?.content??''; }
+    const result=z.object({html:z.string().min(1).max(250000),summary:z.string().min(1)}).parse(JSON.parse(content));
+    if(!/<html[\s>]/i.test(result.html)) throw new Error('The model did not return a complete app');
+    const nextTurns=[...turns,{role:'user',content:prompt},{role:'assistant',content:result.summary}];
+    const {error:saveError}=await db.from('labs_projects').update({html:result.html,turns:nextTurns,model,updated_at:new Date().toISOString()}).eq('id',projectId).eq('user_id',u.user.id);
+    if(saveError) throw saveError;
+    const {error:jobError}=await db.from('labs_jobs').update({status:'completed',completed_at:new Date().toISOString()}).eq('id',jobId).eq('status','running');
+    if(jobError) throw jobError;
+   } catch(e) {
+    const status=e instanceof GatewayError?e.httpStatus:(e instanceof Error&&'status' in e?Number(e.status):500);
+    const message=e instanceof Error?e.message:'Build failed'; console.error('Labs job failed',jobId,message);
+    await db.from('labs_jobs').update({status:[402,403,429].includes(status??500)?'paused':'failed',error:message,completed_at:new Date().toISOString()}).eq('id',jobId);
+   }
+  };
+  EdgeRuntime.waitUntil(work());
+  return json({job},202);
+ } catch(e){console.error('Labs',e);return json({error:'Labs request failed'},500);}
 });

@@ -1,13 +1,12 @@
 // Ares Search — Perplexity-style answers with live Firecrawl sources,
 // Deep Research (multi-query), focus filters, and Yahoo Finance data.
 // Streams custom SSE events: status | sources | finance | delta | done | error
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { verifiedSearch } from "../_shared/webSearch.ts";
+import { completion, textStream, TextMessage } from "../_shared/ai.ts";
+import { isResearchModel } from "../_shared/modelCatalog.ts";
+import { GatewayError } from "npm:@lovable.dev/ai-gateway@0.1.11";
 
 const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 const PLANNER_MODEL = "google/gemini-3-flash-preview";
@@ -27,28 +26,8 @@ function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
-async function firecrawlSearch(query: string, key: string, focus: string, limit: number, scrape: boolean): Promise<Source[]> {
-  try {
-    const body: Record<string, unknown> = { query: query + (FOCUS_SUFFIX[focus] ?? ""), limit };
-    if (focus === "news") { body.sources = ["news", "web"]; body.tbs = "qdr:w"; }
-    if (scrape) body.scrapeOptions = { formats: ["markdown"], onlyMainContent: true };
-    const res = await fetch("https://api.firecrawl.dev/v2/search", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) { console.error("firecrawl", res.status, await res.text()); return []; }
-    const d = await res.json();
-    const list = [...(d?.data?.web ?? []), ...(d?.data?.news ?? []), ...(Array.isArray(d?.data) ? d.data : [])];
-    return list
-      .filter((r: any) => typeof r?.url === "string")
-      .map((r: any) => ({
-        url: r.url,
-        title: r.title ?? r.url,
-        description: (r.description ?? r.snippet ?? "").slice(0, 400),
-        content: (r.markdown ?? "").replace(/\s+/g, " ").slice(0, scrape ? 2500 : 0),
-      }));
-  } catch (e) { console.error("firecrawl err", e); return []; }
+async function firecrawlSearch(query: string, key: string, focus: string, limit: number, scrape: boolean, onBackup: () => void): Promise<Source[]> {
+ return verifiedSearch(query + (FOCUS_SUFFIX[focus] ?? ''), key, focus, limit, scrape, onBackup);
 }
 
 const YH = { "User-Agent": "Mozilla/5.0 (Ares)" };
@@ -81,30 +60,16 @@ async function yahooFinance(query: string) {
   } catch (e) { console.error("yahoo", e); return null; }
 }
 
-async function planQueries(query: string, key: string): Promise<string[]> {
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: PLANNER_MODEL,
-        messages: [
-          { role: "system", content: `Today is ${new Date().toDateString()}. Break the user's research question into 5 distinct, specific web search queries covering different angles (facts, latest developments, data, expert opinion, counterpoints). Reply ONLY with a JSON array of strings.` },
-          { role: "user", content: query },
-        ],
-      }),
-    });
-    if (!res.ok) return [query];
-    const t: string = (await res.json())?.choices?.[0]?.message?.content ?? "";
-    const arr = JSON.parse(t.slice(t.indexOf("["), t.lastIndexOf("]") + 1));
-    return Array.isArray(arr) && arr.length ? arr.slice(0, 6).map(String) : [query];
-  } catch { return [query]; }
+async function planQueries(query: string): Promise<string[]> {
+ const result=await completion(PLANNER_MODEL,[{role:'system',content:`Today is ${new Date().toUTCString()}. Return JSON {"queries":[five specific web search queries covering facts, recent data, expert opinion and counterpoints]}.`},{role:'user',content:query}]);
+ const parsed=JSON.parse(result.choices?.[0]?.message?.content??'{}');
+ return Array.isArray(parsed.queries) ? parsed.queries.filter((q: unknown)=>typeof q==='string').slice(0,5) : [query];
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer /, "");
-  const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
+  const sb = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "");
   const { data: u } = await sb.auth.getUser(token);
   if (!u?.user) return json({ error: "Please sign in to search." }, 401);
 
@@ -113,8 +78,9 @@ Deno.serve(async (req) => {
   if (!query) return json({ error: "Empty query" }, 400);
   const focus = typeof body?.focus === "string" && body.focus in FOCUS_SUFFIX ? body.focus : "all";
   const deep = body?.depth === "deep";
-  const model = typeof body?.model === "string" && /^(google|openai|groq)\//.test(body.model) ? body.model : DEFAULT_MODEL;
-  const history: Array<{ role: string; content: string }> = Array.isArray(body?.history)
+  const model = typeof body?.model === "string" ? body.model : DEFAULT_MODEL;
+  if (!isResearchModel(model)) return json({ error: "Choose a verified research model." }, 400);
+  const history: TextMessage[] = Array.isArray(body?.history)
     ? body.history.filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m.content === "string").slice(-6).map((m: any) => ({ role: m.role, content: m.content.slice(0, 4000) }))
     : [];
 
@@ -134,19 +100,19 @@ Deno.serve(async (req) => {
           if (finance) send({ type: "finance", data: finance });
         }
 
-        const queries = deep ? await planQueries(query, LOVABLE) : [query];
+        const queries = deep ? await planQueries(query) : [query];
         if (deep) send({ type: "plan", queries });
 
         const all: Source[] = [];
         for (const q of queries) {
           send({ type: "status", text: `Searching the web: ${q}` });
-          const r = await firecrawlSearch(q, FC, focus, deep ? 4 : 6, true);
+          const r = await firecrawlSearch(q, FC, focus, deep ? 4 : 6, true, () => send({type:"status",text:"Firecrawl credits exhausted. Using DuckDuckGo and Google News RSS backup…"}));
           for (const s of r) if (!all.some((a) => a.url === s.url)) all.push(s);
         }
         // Verification pass: one more independent search to cross-check.
         if (!deep) {
           send({ type: "status", text: "Verifying with a second search…" });
-          const v = await firecrawlSearch(`${query} latest verified facts`, FC, focus, 3, false);
+          const v = await firecrawlSearch(`${query} latest verified facts`, FC, focus, 3, false, () => send({type:"status",text:"Firecrawl credits exhausted. Verifying with backup sources…"}));
           for (const s of v) if (!all.some((a) => a.url === s.url)) all.push(s);
         }
         const sources = all.slice(0, deep ? 20 : 9);
@@ -162,7 +128,12 @@ ${finance ? `\nLIVE YAHOO FINANCE DATA:\n${JSON.stringify(finance)}` : ""}
 SOURCES:
 ${ctx || "(no sources found — say that live search returned nothing)"}`;
 
-        const groq = model.startsWith("groq/");
+        const messages: TextMessage[] = [{ role:'system', content:system }, ...history, {role:'user',content:query}];
+        if (!model.startsWith('groq/')) {
+          const result=await textStream(model,messages);
+          for await(const event of result) {const text=event.choices?.[0]?.delta?.content; if(text) send({type:'delta',text});}
+        } else {
+        const groq = true;
         const res = await fetch(groq ? "https://api.groq.com/openai/v1/chat/completions" : "https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${groq ? Deno.env.get("GROQ_API_KEY") : LOVABLE}`, "Content-Type": "application/json" },
@@ -190,10 +161,11 @@ ${ctx || "(no sources found — say that live search returned nothing)"}`;
             try { const c = JSON.parse(p)?.choices?.[0]?.delta?.content; if (c) send({ type: "delta", text: c }); } catch { /* partial */ }
           }
         }
+        }
         send({ type: "done" });
       } catch (e) {
         console.error("research", e);
-        send({ type: "error", text: "Search failed." });
+        send({ type: "error", text: e instanceof GatewayError ? `${e.message} [${e.httpStatus ?? e.code}]` : e instanceof Error ? e.message : "Search failed." });
       }
       ctrl.close();
     },

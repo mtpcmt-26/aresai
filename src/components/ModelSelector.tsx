@@ -13,10 +13,11 @@ import { MODELS, ModelOption, getModel } from "@/lib/models";
 interface Props {
   value: string;
   onChange: (id: string) => void;
+  options?: readonly ModelOption[];
 }
 
-export const ModelSelector = ({ value, onChange }: Props) => {
-  const current = getModel(value);
+export const ModelSelector = ({ value, onChange, options = MODELS }: Props) => {
+  const current = options.find(m => m.id === value) ?? options[0] ?? getModel(value);
 
   return (
     <DropdownMenu>
@@ -37,7 +38,7 @@ export const ModelSelector = ({ value, onChange }: Props) => {
           Model
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {MODELS.map((m: ModelOption) => {
+        {options.map((m: ModelOption) => {
           const selected = m.id === value;
           return (
             <DropdownMenuItem

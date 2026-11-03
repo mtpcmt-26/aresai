@@ -17,14 +17,19 @@ const Discover = () => {
   const [news, setNews] = useState<News[]>([]);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    supabase.functions.invoke("discover", { body: { topic } }).then(({ data }) => {
+    let cancelled = false;
+    supabase.functions.invoke("discover", { body: { topic } }).then(({ data, error }) => {
+      if (cancelled) return;
+      setError(error ? "News could not load. Please try again." : data?.newsError ?? null);
       setNews(data?.news ?? []);
       if (data?.markets?.length) setMarkets(data.markets);
       setLoading(false);
     });
+    return () => { cancelled = true; };
   }, [topic]);
 
   return (
@@ -36,6 +41,7 @@ const Discover = () => {
       </header>
 
       <div className="border-b border-border">
+        <div className="mx-auto max-w-5xl px-4 pt-3 text-xs text-muted-foreground">Markets <span className="font-medium text-foreground">by apex</span> · Yahoo Finance data</div>
         <div className="mx-auto flex max-w-5xl gap-6 overflow-x-auto px-4 py-2.5">
           {markets.map((m) => (
             <Link key={m.symbol} to={`/search?focus=finance&q=${encodeURIComponent(`$${m.symbol} ${m.name} stock today`)}`} className="shrink-0 text-xs">
@@ -48,6 +54,7 @@ const Discover = () => {
       </div>
 
       <main className="mx-auto max-w-5xl px-4 py-6">
+        <h1 className="mb-5 text-2xl font-semibold">News <span className="text-sm font-normal text-muted-foreground">by usn.</span></h1>
         <div className="mb-6 flex flex-wrap gap-1.5">
           {TOPICS.map((t) => (
             <button key={t.id} onClick={() => setTopic(t.id)}
@@ -59,7 +66,7 @@ const Discover = () => {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : news.length === 0 ? (
-          <p className="py-20 text-center text-sm text-muted-foreground">No stories right now. Try another topic.</p>
+          <p className="py-20 text-center text-sm text-muted-foreground">{error ?? "No stories right now. Try another topic."}</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {news.map((n) => (

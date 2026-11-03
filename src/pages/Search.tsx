@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ModelSelector } from "@/components/ModelSelector";
 import { loadModelId, saveModelId } from "@/lib/models";
+import { RESEARCH_MODELS, isResearchModel } from "../../supabase/functions/_shared/modelCatalog";
 import { Depth, FOCUSES, FinanceData, Focus, SearchSource, runResearch } from "@/lib/research";
 import { AnswerMarkdown, FinanceCard, SourceCards } from "@/components/search/AnswerView";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +25,7 @@ const Search = () => {
   const [input, setInput] = useState("");
   const [focus, setFocus] = useState<Focus>("all");
   const [depth, setDepth] = useState<Depth>("quick");
-  const [model, setModel] = useState(loadModelId());
+  const [model, setModel] = useState(() => isResearchModel(loadModelId()) ? loadModelId() : RESEARCH_MODELS[0].id);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
   const [sharedIdx, setSharedIdx] = useState<number | null>(null);
@@ -84,7 +85,7 @@ const Search = () => {
           <button onClick={() => setDepth("quick")} className={cn("flex items-center gap-1 rounded-sm px-2 py-1 text-[11px] font-bold uppercase tracking-wider", depth === "quick" ? "bg-secondary text-foreground" : "text-muted-foreground")}><Zap className="h-3 w-3" />Quick</button>
           <button onClick={() => setDepth("deep")} className={cn("flex items-center gap-1 rounded-sm px-2 py-1 text-[11px] font-bold uppercase tracking-wider", depth === "deep" ? "bg-secondary text-foreground" : "text-muted-foreground")}><Microscope className="h-3 w-3" />Deep Research</button>
         </div>
-        <ModelSelector value={model} onChange={(id) => { setModel(id); saveModelId(id); }} />
+        <ModelSelector value={model} options={RESEARCH_MODELS} onChange={(id) => { setModel(id); saveModelId(id); }} />
         <Button size="icon" className="ml-auto h-8 w-8 rounded-sm" disabled={!input.trim() || busy} onClick={() => ask(input)}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
         </Button>
