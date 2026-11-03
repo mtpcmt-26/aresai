@@ -1,0 +1,11 @@
+CREATE TABLE public.labs_projects (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, name text NOT NULL DEFAULT 'New project', html text NOT NULL DEFAULT '', turns jsonb NOT NULL DEFAULT '[]', model text NOT NULL DEFAULT 'openai/gpt-5.5', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.labs_projects TO authenticated;
+GRANT ALL ON public.labs_projects TO service_role;
+ALTER TABLE public.labs_projects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Own Labs projects" ON public.labs_projects FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+CREATE TABLE public.labs_jobs (id uuid PRIMARY KEY, project_id uuid NOT NULL REFERENCES public.labs_projects(id) ON DELETE CASCADE, user_id uuid NOT NULL, status text NOT NULL DEFAULT 'running' CHECK (status IN ('running','completed','failed','paused')), prompt text NOT NULL, model text NOT NULL, error text, lease_until timestamptz NOT NULL DEFAULT now() + interval '15 minutes', created_at timestamptz NOT NULL DEFAULT now(), completed_at timestamptz);
+GRANT SELECT ON public.labs_jobs TO authenticated;
+GRANT ALL ON public.labs_jobs TO service_role;
+ALTER TABLE public.labs_jobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Read own Labs jobs" ON public.labs_jobs FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE UNIQUE INDEX labs_single_flight ON public.labs_jobs(project_id) WHERE status = 'running';

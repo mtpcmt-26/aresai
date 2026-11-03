@@ -77,6 +77,86 @@ export type Database = {
         }
         Relationships: []
       }
+      labs_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          lease_until: string
+          model: string
+          project_id: string
+          prompt: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id: string
+          lease_until?: string
+          model: string
+          project_id: string
+          prompt: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          lease_until?: string
+          model?: string
+          project_id?: string
+          prompt?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labs_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "labs_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      labs_projects: {
+        Row: {
+          created_at: string
+          html: string
+          id: string
+          model: string
+          name: string
+          turns: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          html?: string
+          id?: string
+          model?: string
+          name?: string
+          turns?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          html?: string
+          id?: string
+          model?: string
+          name?: string
+          turns?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           age_confirmed_13_plus: boolean
